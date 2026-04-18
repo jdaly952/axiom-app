@@ -14,21 +14,6 @@ export default defineConfig(({mode}) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
-    build: {
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom'],
-            firebase: ['manualChunks: {
-  vendor: ['react', 'react-dom'],
-  firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-  genai: ['@google/genai'],
-},'],
-            genai: ['@google/genai'],
-          },
-        },
-      },
-    },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
       port: parseInt(process.env.PORT || '8080'),
