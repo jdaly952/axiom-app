@@ -45,8 +45,8 @@ import {
   increment,
   limit
 } from "firebase/firestore";
-import { Shield, Save, CheckCircle2, AlertCircle, AlertTriangle, LogIn, ChevronLeft, Trash2, Download, ArrowRight, RotateCcw, Mail } from "lucide-react";
-import { GoogleGenAI } from "@google/genai";
+import { Shield, Save, CheckCircle2, AlertCircle, AlertTriangle, LogIn, ChevronLeft, Trash2, Download, ArrowRight, RotateCcw, Mail, Volume2, VolumeX, Loader2 } from "lucide-react";
+import { GoogleGenAI, Modality } from "@google/genai";
 import { SYSTEM_PROMPT } from "./prompt";
 
 // --- SVG Generation for Glowforge ---
@@ -154,6 +154,9 @@ const CURIOUS_CONCEPTS = [
   "What is the blockchain?", "Why do leaves change color?", "How does 5G work?",
   "Why do we have fingerprints?", "How does a microwave cook food?", "What is the greenhouse effect?", "How do mirrors work?", "Why do we yawn?", "How does music affect our brain?"
 ];
+
+const MAX_CONCEPT_LENGTH = 500;
+const BUTTON_LABELS = ["Let's go!", "Tell me!", "Tell me how.", "Understand it -->"];
 
 const theme = "studio";
 
@@ -281,6 +284,92 @@ const VoteUI = ({ content }: { content: string }) => {
   );
 };
 
+// --- Axiom Voice Component ---
+const AxiomVoice = ({ text }: { text: string }) => {
+  const [loading, setLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const synthesizeSpeech = async () => {
+    if (isPlaying) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setIsPlaying(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error("Axiom Key Missing");
+
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-flash-tts-preview",
+        contents: [{ parts: [{ text }] }],
+        config: {
+          responseModalities: [Modality.AUDIO],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: 'Zephyr' }, // 'Zephyr' fits the oracle/engine vibe
+            },
+          },
+        },
+      });
+
+      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (base64Audio) {
+        const audioData = `data:audio/wav;base64,${base64Audio}`;
+        
+        if (audioRef.current) {
+          audioRef.current.src = audioData;
+          audioRef.current.play();
+        } else {
+          const audio = new Audio(audioData);
+          audio.onended = () => setIsPlaying(false);
+          audioRef.current = audio;
+          audio.play();
+        }
+        setIsPlaying(true);
+      }
+    } catch (err) {
+      console.error("Axiom Voice synthesis failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
+
+  return (
+    <button 
+      onClick={synthesizeSpeech}
+      disabled={loading}
+      className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-current/10 hover:border-accent/40 hover:bg-accent/5 transition-all group shrink-0"
+      title="Voice Synthesis"
+    >
+      {loading ? (
+        <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin text-accent" />
+      ) : isPlaying ? (
+        <VolumeX className="w-3.5 h-3.5 md:w-4 md:h-4 text-accent" />
+      ) : (
+        <Volume2 className="w-3.5 h-3.5 md:w-4 md:h-4 opacity-40 group-hover:opacity-100" />
+      )}
+      <span className="font-mono text-[10px] uppercase tracking-widest opacity-40 group-hover:opacity-100 hidden sm:block">
+        {loading ? "Synthesizing..." : isPlaying ? "Silence" : "Listen"}
+      </span>
+    </button>
+  );
+};
+
 // --- ELI9 Component ---
 const ELI9Card = ({ content }: { content?: string }) => {
   const theme = "studio";
@@ -296,7 +385,7 @@ const ELI9Card = ({ content }: { content?: string }) => {
         <span className="flex items-center gap-3 font-mono text-sm uppercase tracking-widest font-black">
           <span className="text-xl">🧒</span> Explain like I'm 9
         </span>
-        <span className="text-[10px] font-mono uppercase opacity-40 font-black">Tap for the final dumb-down</span>
+        <span className="text-[10px] font-mono uppercase opacity-40 font-black">Tap for the core distillation</span>
       </button>
 
       <AnimatePresence>
@@ -308,10 +397,13 @@ const ELI9Card = ({ content }: { content?: string }) => {
             className="mt-6 overflow-hidden rounded-2xl border-2 border-[#C8A2C8] bg-[#E6E6FA] shadow-[8px_8px_0_0_rgba(200,162,200,0.2)]"
           >
             <div className="p-6 md:p-10">
-               <div className="flex items-center gap-4 mb-4 opacity-60">
-                 <div className="w-6 h-0.5 bg-[#C8A2C8]" />
-                 <span className="font-mono text-[10px] md:text-xs uppercase tracking-widest font-black text-black">Simplified View</span>
-               </div>
+                <div className="flex items-center justify-between mb-4 opacity-70">
+                  <div className="flex items-center gap-4">
+                    <div className="w-6 h-0.5 bg-[#C8A2C8]" />
+                    <span className="font-mono text-[10px] md:text-xs uppercase tracking-widest font-black text-black">Simplified View</span>
+                  </div>
+                  <AxiomVoice text={content} />
+                </div>
                <p className="text-lg md:text-2xl font-sans font-bold leading-relaxed text-pretty text-black">
                  {content}
                </p>
@@ -516,6 +608,10 @@ function AxiomEngine() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const theme = "studio";
   const [concept, setConcept] = useState("");
+  const [conceptError, setConceptError] = useState<string | null>(null);
+  const [buttonLabel, setButtonLabel] = useState(() => 
+    BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)]
+  );
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -567,6 +663,9 @@ function AxiomEngine() {
       selected.push({ concept: combined.splice(index, 1)[0] });
     }
     setSuggestions(selected);
+    
+    // Also rotate the main button label on refresh or load
+    setButtonLabel(BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)]);
   };
 
   useEffect(() => {
@@ -774,6 +873,9 @@ function AxiomEngine() {
       if (jsonMatch) {
         cleanJson = jsonMatch[0];
       }
+
+      // Cleanup trailing commas which break JSON.parse
+      cleanJson = cleanJson.replace(/,\s*([\]}])/g, '$1');
 
       try {
         const data = JSON.parse(cleanJson);
@@ -1167,7 +1269,14 @@ function AxiomEngine() {
                   ref={inputRef}
                   value={concept}
                   onChange={e => {
-                    setConcept(e.target.value);
+                    const val = e.target.value;
+                    if (val.length <= MAX_CONCEPT_LENGTH) {
+                      setConcept(val);
+                      setConceptError(null);
+                    } else {
+                      setConceptError(`Topic must be under ${MAX_CONCEPT_LENGTH} characters.`);
+                    }
+
                     if (e.target.scrollHeight < 400) {
                       e.target.style.height = 'auto';
                       e.target.style.height = Math.max(e.target.scrollHeight, 60) + 'px';
@@ -1176,8 +1285,22 @@ function AxiomEngine() {
                   onKeyDown={handleKey}
                   placeholder="Type any topic you want to understand..."
                   rows={1}
-                  className="w-full bg-transparent border-none outline-none resize-none transition-all duration-700 break-words placeholder:opacity-70 text-2xl md:text-3xl lg:text-4xl font-display font-black text-white tracking-tighter leading-none"
+                  className={`w-full bg-transparent border-none outline-none resize-none transition-all duration-700 break-words placeholder:opacity-70 text-2xl md:text-3xl lg:text-4xl font-display font-black text-white tracking-tighter leading-none
+                    ${conceptError ? "text-red-400" : ""}
+                  `}
                 />
+              </div>
+
+              {conceptError && (
+                <div className="mt-4 p-4 bg-red-500/10 border-2 border-red-500/40 text-red-500 text-[10px] font-mono uppercase tracking-widest leading-loose">
+                  {conceptError}
+                </div>
+              )}
+
+              <div className="mt-2 flex justify-end">
+                <span className={`font-mono text-[10px] uppercase tracking-widest transition-opacity ${concept.length > MAX_CONCEPT_LENGTH * 0.8 ? "opacity-100" : "opacity-20"}`}>
+                  {concept.length} / {MAX_CONCEPT_LENGTH}
+                </span>
               </div>
 
               <AnimatePresence>
@@ -1189,14 +1312,20 @@ function AxiomEngine() {
                     className="mt-8 md:mt-12 mb-8 md:mb-12"
                   >
                     <button
-                      onClick={() => runAxiom()}
-                      disabled={concept.length === 0}
+                      onClick={() => {
+                        runAxiom();
+                        // Change button label for variety
+                        setTimeout(() => {
+                           setButtonLabel(BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)]);
+                        }, 1000);
+                      }}
+                      disabled={concept.length === 0 || !!conceptError}
                       className={`w-full group flex items-center justify-center gap-6 px-8 py-5 md:px-12 md:py-8 font-mono text-sm md:text-lg uppercase tracking-[0.2em] font-black transition-all border-4 shadow-[8px_8px_0_0_rgba(255,255,255,0.1)] hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-[12px_12px_0_0_rgba(255,255,255,0.15)] active:translate-x-0 active:translate-y-0 active:shadow-[4px_4px_0_0_rgba(255,255,255,0.1)]
-                        ${concept.length === 0 ? "opacity-30 cursor-not-allowed" : "opacity-100"}
+                        ${(concept.length === 0 || !!conceptError) ? "opacity-30 cursor-not-allowed" : "opacity-100"}
                         bg-black border-white/20 text-white hover:bg-white hover:text-black
                       `}
                     >
-                      {"UNLOCK AXIOM"}
+                      {buttonLabel}
                     </button>
                   </motion.div>
                 )}
@@ -1348,7 +1477,10 @@ function AxiomEngine() {
 
                 {/* 1: THE HOOK (The Provocation) */}
                 {result.hook && (
-                   <div className="mb-12 md:mb-20 pb-12 md:pb-16 border-b-4 border-current/20">
+                   <div className="mb-12 md:mb-20 pb-12 md:pb-16 border-b-4 border-current/20 flex flex-col gap-6">
+                     <div className="flex justify-start">
+                        <AxiomVoice text={result.hook} />
+                     </div>
                      <p className="font-sans font-bold text-2xl md:text-5xl text-accent leading-tight text-pretty">
                         {result.hook}
                      </p>
@@ -1358,7 +1490,7 @@ function AxiomEngine() {
                 {/* The Core Idea */}
                 <div className="mb-16 md:mb-32 flex items-center gap-16">
                   <div className="flex flex-col">
-                    <span className="font-mono text-lg md:text-xl tracking-[0.4em] md:tracking-[0.6em] uppercase font-black text-accent mb-6 md:mb-10">The Core Idea</span>
+                    <span className="font-mono text-lg md:text-xl tracking-[0.4em] md:tracking-[0.6em] uppercase font-black text-accent mb-6 md:mb-10">The Main Idea</span>
                     <h2 className="text-4xl md:text-9xl font-display font-black uppercase tracking-tight leading-none text-white">{concept}</h2>
                   </div>
                   <div className="flex-1 h-1 md:h-2 bg-current opacity-30 ml-8 md:ml-16" />
@@ -1366,18 +1498,21 @@ function AxiomEngine() {
 
                 {/* What It Feels Like */}
                 <div className="flex flex-col mb-32 md:mb-56">
-                   <span className="font-mono text-lg md:text-xl tracking-[0.4em] md:tracking-[0.6em] uppercase font-black text-accent mb-12 md:mb-20">What It Feels Like</span>
+                   <span className="font-mono text-lg md:text-xl tracking-[0.4em] md:tracking-[0.6em] uppercase font-black text-accent mb-12 md:mb-20">The Human Story</span>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 lg:gap-40 relative">
                     {/* Vertical Divider line between states */}
                     <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-1 md:w-2 bg-current opacity-10 -translate-x-1/2" />
 
                     <div className="space-y-8 md:space-y-16">
-                      <div className="flex items-center gap-6">
+                      <div className="flex items-center justify-between gap-6">
                         <span className="font-mono text-sm md:text-lg uppercase tracking-[0.2em] md:tracking-[0.4em] font-black underline decoration-4 underline-offset-8 md:underline-offset-12">
                           {result.axis1?.labelA || "✅ Before you look..."}
                         </span>
-                        <div className="h-1 flex-1 bg-current opacity-20" />
+                        <div className="flex flex-1 items-center gap-6">
+                          <div className="h-1 flex-1 bg-current opacity-20" />
+                          <AxiomVoice text={result.axis1?.stateA || result.stateA} />
+                        </div>
                       </div>
                         <p className="text-xl md:text-4xl font-sans leading-[1.6] text-pretty font-bold transition-all text-white">
                           {result.axis1?.stateA || result.stateA}
@@ -1389,11 +1524,14 @@ function AxiomEngine() {
                     </div>
 
                     <div className="space-y-8 md:space-y-16">
-                      <div className="flex items-center gap-6">
+                      <div className="flex items-center justify-between gap-6">
                         <span className="font-mono text-sm md:text-lg uppercase tracking-[0.2em] md:tracking-[0.4em] font-black underline decoration-4 underline-offset-8 md:underline-offset-12">
                           {result.axis1?.labelB || "❌ Once you look..."}
                         </span>
-                        <div className="h-1 flex-1 bg-current opacity-20" />
+                        <div className="flex flex-1 items-center gap-6">
+                          <div className="h-1 flex-1 bg-current opacity-20" />
+                          <AxiomVoice text={result.axis1?.stateB || result.stateB} />
+                        </div>
                       </div>
                       <p className="text-xl md:text-4xl font-sans leading-[1.6] text-pretty font-bold transition-all text-white">
                         {result.axis1?.stateB || result.stateB}
@@ -1406,13 +1544,16 @@ function AxiomEngine() {
                   </div>
                 </div>
 
-                {/* How It Works */}
-                {result.axis2?.mechanism && (
-                   <div className="mb-40 md:mb-64 p-12 md:p-24 border-4 border-accent/40 bg-accent/5 relative overflow-hidden group">
-                      <span className="font-mono text-lg tracking-[0.6em] uppercase font-black text-accent mb-16 block">How It Works</span>
-                      <p className="text-3xl md:text-6xl font-display font-black leading-tight tracking-tight text-white">
-                         {result.axis2.mechanism}
-                      </p>
+                 {/* The Secret Way It Works */}
+                 {result.axis2?.mechanism && (
+                    <div className="mb-40 md:mb-64 p-12 md:p-24 border-4 border-accent/40 bg-accent/5 relative overflow-hidden group">
+                       <div className="flex justify-between items-center mb-16">
+                         <span className="font-mono text-lg tracking-[0.6em] uppercase font-black text-accent block">The Secret Way It Works</span>
+                         <AxiomVoice text={result.axis2.mechanism} />
+                       </div>
+                       <p className="text-3xl md:text-6xl font-display font-black leading-tight tracking-tight text-white">
+                          {result.axis2.mechanism}
+                       </p>
                       <div className="flex flex-col gap-4">
                         <ELI9Card content={result.axis2.mechanism_eli9} />
                         <VoteUI content={result.axis2.mechanism} />
@@ -1420,11 +1561,12 @@ function AxiomEngine() {
                    </div>
                 )}
 
-                {/* The Big Picture */}
-                <div className="relative pt-24 md:pt-48 border-t-[12px] md:border-t-[20px] border-current pb-24 md:pb-40">
-                   <div className="absolute top-8 md:top-16 left-0 right-0 flex justify-between items-center">
-                     <span className="font-mono text-lg md:text-2xl tracking-[0.4em] md:tracking-[0.8em] uppercase font-black text-accent">The Big Picture</span>
-                   </div>
+                 {/* The Big Picture */}
+                 <div className="relative pt-24 md:pt-48 border-t-[12px] md:border-t-[20px] border-current pb-24 md:pb-40">
+                    <div className="absolute top-8 md:top-16 left-0 right-0 flex justify-between items-center">
+                      <span className="font-mono text-lg md:text-2xl tracking-[0.4em] md:tracking-[0.8em] uppercase font-black text-accent">The Big Realization</span>
+                      <AxiomVoice text={result.axis3?.zenith || result.axiom} />
+                    </div>
 
                    <div className="flex flex-col gap-12 md:gap-20 mb-24 md:mb-48">
                       <div className="space-y-8">
@@ -1437,17 +1579,20 @@ function AxiomEngine() {
                         </div>
                       </div>
                       
-                      {result.identityAnchor && (
-                        <div className="space-y-12">
-                          <div className="flex items-center gap-10 md:gap-20 mt-12 md:mt-24 pt-8 md:pt-16 border-t-2 border-accent/20">
-                              <div className="w-12 md:w-32 h-1 bg-accent" />
-                              <div className="flex flex-col gap-2">
-                                <span className="font-mono text-xs md:text-sm uppercase tracking-[0.2em] opacity-40">Something to think about:</span>
-                                <p className="text-2xl md:text-5xl font-sans text-accent font-black leading-relaxed">
-                                    {result.identityAnchor}
-                                </p>
-                              </div>
-                          </div>
+                       {result.identityAnchor && (
+                         <div className="space-y-12">
+                           <div className="flex items-center gap-10 md:gap-20 mt-12 md:mt-24 pt-8 md:pt-16 border-t-2 border-accent/20">
+                               <div className="w-12 md:w-32 h-1 bg-accent" />
+                               <div className="flex-1 flex flex-col gap-6">
+                                 <div className="flex justify-between items-center">
+                                   <span className="font-mono text-xs md:text-sm uppercase tracking-[0.2em] opacity-40">Something to think about:</span>
+                                   <AxiomVoice text={result.identityAnchor} />
+                                 </div>
+                                 <p className="text-2xl md:text-5xl font-sans text-accent font-black leading-relaxed">
+                                     {result.identityAnchor}
+                                 </p>
+                               </div>
+                           </div>
                           <div className="flex flex-col gap-4">
                             <ELI9Card content={result.identityAnchor_eli9} />
                             <VoteUI content={result.identityAnchor} />
