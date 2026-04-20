@@ -285,6 +285,33 @@ const VoteUI = ({ content }: { content: string }) => {
 };
 
 // --- Axiom Voice Component ---
+const createWavHeader = (pcmLength: number, sampleRate: number = 24000) => {
+  const header = new ArrayBuffer(44);
+  const view = new DataView(header);
+  
+  const writeString = (offset: number, string: string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + pcmLength, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, pcmLength, true);
+
+  return header;
+};
+
 const AxiomVoice = ({ text }: { text: string }) => {
   const [loading, setLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -321,16 +348,30 @@ const AxiomVoice = ({ text }: { text: string }) => {
 
       const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       if (base64Audio) {
-        const audioData = `data:audio/wav;base64,${base64Audio}`;
+        // Gemini TTS returns raw PCM (16-bit, 24kHz, Mono). We must add a WAV header for browser playback.
+        const binaryString = atob(base64Audio);
+        const len = binaryString.length;
+        const pcmData = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          pcmData[i] = binaryString.charCodeAt(i);
+        }
+
+        const header = createWavHeader(len, 24000);
+        const wavData = new Uint8Array(44 + len);
+        wavData.set(new Uint8Array(header), 0);
+        wavData.set(pcmData, 44);
+
+        const blob = new Blob([wavData], { type: 'audio/wav' });
+        const audioUrl = URL.createObjectURL(blob);
         
         if (audioRef.current) {
-          audioRef.current.src = audioData;
-          audioRef.current.play();
+          audioRef.current.src = audioUrl;
+          audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
         } else {
-          const audio = new Audio(audioData);
+          const audio = new Audio(audioUrl);
           audio.onended = () => setIsPlaying(false);
           audioRef.current = audio;
-          audio.play();
+          audio.play().catch(e => console.error("Audio playback failed:", e));
         }
         setIsPlaying(true);
       }
