@@ -1,4 +1,4 @@
-fetch("http://127.0.0.1:3000/api/axiom", {
+fetch("http://127.0.0.1:3000/api/understand", {
   method: "POST",
   headers: {"Content-Type": "application/json"},
   body: JSON.stringify({concept: "test"})

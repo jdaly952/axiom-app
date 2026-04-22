@@ -255,7 +255,7 @@ export default function CoasterCustomizer({ concept, understandableData, onClose
                       Axis 3 // Zenith
                     </div>
                     <div className="font-serif text-lg md:text-3xl leading-relaxed font-black">
-                      {understandableData.axis3?.zenith || understandableData.axiom}
+                      {understandableData.axis3?.zenith || understandableData.zenith}
                     </div>
                   </div>
                 </div>
