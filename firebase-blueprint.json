@@ -31,20 +31,16 @@
       "required": ["concept", "payload", "createdAt"]
     },
     "GlobalTopic": {
-      "title": "Vault Concept",
-      "description": "The system-level record of a unique concept",
+      "title": "Global Topic",
+      "description": "Aggregated data for a unique concept",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "concept": { "type": "string", "description": "The literal title provided by the first user" },
-        "tags": { "type": "array", "items": { "type": "string" } },
-        "relationships": { "type": "array", "items": { "type": "string" } },
+        "concept": { "type": "string" },
         "rank": { "type": "number" },
         "lastPayload": { "type": "object" },
-        "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "concept", "rank", "createdAt", "updatedAt"]
+      "required": ["concept", "rank"]
     },
     "CommunityVote": {
       "title": "Community Vote",
@@ -57,60 +53,16 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["contentHash", "ups", "downs"]
-    },
-    "AxiomVault": {
-      "title": "Axiom Vault",
-      "description": "The global index of user-affirmed explanations",
-      "type": "object",
-      "properties": {
-        "concept": { "type": "string" },
-        "step": { "type": "number" },
-        "label": { "type": "string" },
-        "content": { "type": "string" },
-        "style": { "type": "string" },
-        "affirmationCount": { "type": "number" },
-        "lastAffirmed": { "type": "string", "format": "date-time" },
-        "domain": { "type": "string" },
-        "domainEmoji": { "type": "string" }
-      },
-      "required": ["concept", "step", "content", "affirmationCount"]
-    },
-    "ConceptCoupler": {
-      "title": "Concept Coupler",
-      "description": "A user's personal affirmation link to a concept",
-      "type": "object",
-      "properties": {
-        "uid": { "type": "string" },
-        "concept": { "type": "string" },
-        "step": { "type": "number" },
-        "label": { "type": "string" },
-        "content": { "type": "string" },
-        "learningStyle": { "type": "string" },
-        "domain": { "type": "string" },
-        "domainEmoji": { "type": "string" },
-        "breadcrumb": { "type": "string" },
-        "isAffirmed": { "type": "boolean" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      },
-      "required": ["uid", "concept", "step"]
     }
   },
   "firestore": {
     "/users/{uid}": {
       "schema": "User",
-      "description": "User profiles and learning preferences"
+      "description": "User profiles"
     },
     "/global_index/{conceptId}": {
       "schema": "GlobalTopic",
       "description": "Global ranking system for concept auto-suggestions"
-    },
-    "/axiom_vault/{axiomId}": {
-      "schema": "AxiomVault",
-      "description": "The source of truth for high-quality, community-affirmed explanations"
-    },
-    "/concept_couplers/{couplerId}": {
-      "schema": "ConceptCoupler",
-      "description": "Personal ledger of user-affirmed concepts and their constituent axioms"
     },
     "/saved_topics/{topicId}": {
       "schema": "UnderstandablePayload",

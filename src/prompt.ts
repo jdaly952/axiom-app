@@ -65,10 +65,6 @@ IMPORTANT: Ensure the JSON is strictly valid. NO TRAILING COMMAS.
   },
   "identityAnchor": "A friendly question that asks how the idea is in the user's life right now.",
   "identityAnchor_eli9": "A tiny question for a 5-year-old.",
-  "whyItMatters": "One short sentence explaining how this truth helps in real life.",
-  "tags": ["3-5 relevant simple tags"],
-  "relatedConcepts": ["2-3 IDs or titles of related ideas in small words"],
-  "furtherExamples": ["A super simple real-world example", "Another tiny real-world example"],
   "distillation": "◆ 2-4 sweet words"
 }
 
