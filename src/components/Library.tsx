@@ -36,17 +36,41 @@ export const Library: React.FC<LibraryProps> = ({ onClose, onSelectItem, showFee
     
     // Hardcoded initial data to prevent empty library
     const cats: Category[] = [
-      { id: 'comp-fluid', name: 'Computer Fluidity', description: 'Mastering the fundamental interfaces of modern computing.', icon: 'Cpu', order: 1 },
-      { id: 'xcode-pro', name: 'Xcode Essentials', description: 'Advanced tools tracking the hierarchy of code.', icon: 'Code2', order: 2 },
-      { id: 'system-arch', name: 'System Architecture', description: 'The blueprint of digital resilience.', icon: 'Layers', order: 3 }
+      { id: 'dev-mastery', name: 'Software Mastery', description: 'Deep dives into engineering concepts.', icon: 'Code2', order: 1 },
+      { id: 'math-physics', name: 'Mathematics & Physics', description: 'The laws governing reality.', icon: 'Cpu', order: 2 },
+      { id: 'sys-design', name: 'System Architecture', description: 'The blueprint of robust pipelines.', icon: 'Layers', order: 3 },
+      { id: 'cognitive-sci', name: 'Cognitive Science', description: 'Understanding the human mind.', icon: 'Lightbulb', order: 4 },
+      { id: 'art-history', name: 'Art & History', description: 'The evolution of human expression.', icon: 'Code2', order: 5 }
     ];
 
     const its: Item[] = [
-      { id: 'ctrl-key', categoryId: 'comp-fluid', title: 'The CTRL Key', shortDescription: 'The power modifier for every workflow.', icon: 'Zap', order: 1 },
-      { id: 'file-sys', categoryId: 'comp-fluid', title: 'File System', shortDescription: 'Understanding how data is organized.', icon: 'Layers', order: 2 },
-      { id: 'terminal', categoryId: 'comp-fluid', title: 'Terminal Basics', shortDescription: 'Talking directly to the machine.', icon: 'Terminal', order: 3 },
-      { id: 'project-nav', categoryId: 'xcode-pro', title: 'Project Navigator', shortDescription: 'The hierarchy of your application.', icon: 'Search', order: 1 },
-      { id: 'debugger', categoryId: 'xcode-pro', title: 'The Debugger', shortDescription: 'Hunting bugs with precision.', icon: 'Lightbulb', order: 2 }
+      // Software Mastery
+      { id: 'closures', categoryId: 'dev-mastery', title: 'Closures', shortDescription: 'Functions that remember their birthplace.', icon: 'Zap', order: 1 },
+      { id: 'event-loop', categoryId: 'dev-mastery', title: 'The Event Loop', shortDescription: 'How single-threaded environments handle concurrency.', icon: 'Layers', order: 2 },
+      { id: 'recursion', categoryId: 'dev-mastery', title: 'Recursion', shortDescription: 'A function calling itself to break down problems.', icon: 'Terminal', order: 3 },
+      { id: 'pointers', categoryId: 'dev-mastery', title: 'Pointers', shortDescription: 'Variables that hold memory addresses.', icon: 'Search', order: 4 },
+      { id: 'functional-prog', categoryId: 'dev-mastery', title: 'Functional Programming', shortDescription: 'Using pure functions without side-effects.', icon: 'Code2', order: 5 },
+      
+      // Math & Physics
+      { id: 'relativity', categoryId: 'math-physics', title: 'General Relativity', shortDescription: 'Gravity as the bending of spacetime.', icon: 'Lightbulb', order: 1 },
+      { id: 'quantum-ent', categoryId: 'math-physics', title: 'Quantum Entanglement', shortDescription: 'Spooky action at a distance.', icon: 'Zap', order: 2 },
+      { id: 'calculus', categoryId: 'math-physics', title: 'Calculus', shortDescription: 'The mathematics of continuous change.', icon: 'Layers', order: 3 },
+      { id: 'chaos-theory', categoryId: 'math-physics', title: 'Chaos Theory', shortDescription: 'Sensitive dependence on initial conditions.', icon: 'Terminal', order: 4 },
+
+      // System Architecture
+      { id: 'microservices', categoryId: 'sys-design', title: 'Microservices', shortDescription: 'Decoupled systems communicating via APIs.', icon: 'Cpu', order: 1 },
+      { id: 'load-balancing', categoryId: 'sys-design', title: 'Load Balancing', shortDescription: 'Distributing traffic to prevent overload.', icon: 'Layers', order: 2 },
+      { id: 'event-sourcing', categoryId: 'sys-design', title: 'Event Sourcing', shortDescription: 'Treating structural changes as immutable sequences.', icon: 'Terminal', order: 3 },
+
+      // Cognitive Science
+      { id: 'neuroplasticity', categoryId: 'cognitive-sci', title: 'Neuroplasticity', shortDescription: 'The brains ability to reorganize itself.', icon: 'Cpu', order: 1 },
+      { id: 'cognitive-bias', categoryId: 'cognitive-sci', title: 'Cognitive Biases', shortDescription: 'Systematic patterns of deviation from norm.', icon: 'Layers', order: 2 },
+      { id: 'theory-of-mind', categoryId: 'cognitive-sci', title: 'Theory of Mind', shortDescription: 'Understanding that others have distinct beliefs.', icon: 'Search', order: 3 },
+
+      // Art & History
+      { id: 'renaissance', categoryId: 'art-history', title: 'The Renaissance', shortDescription: 'The revival of classical learning.', icon: 'Lightbulb', order: 1 },
+      { id: 'impressionism', categoryId: 'art-history', title: 'Impressionism', shortDescription: 'Capturing the feeling of a moment.', icon: 'Zap', order: 2 },
+      { id: 'stoicism', categoryId: 'art-history', title: 'Stoicism', shortDescription: 'Ancient philosophy for emotional resilience.', icon: 'Terminal', order: 3 },
     ];
 
     const cards: IndexCard[] = [
@@ -181,7 +205,7 @@ export const Library: React.FC<LibraryProps> = ({ onClose, onSelectItem, showFee
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-40 opacity-40 text-center">
-                   <BookOpen size={64} className="mb-8" />
+                   <BookOpen size={48} className="mb-8" />
                    <h3 className="text-3xl font-display font-black uppercase mb-4">Library Empty</h3>
                    <p className="font-mono text-sm uppercase tracking-widest max-w-sm">No structured categories found in the core index.</p>
                 </div>
@@ -195,7 +219,7 @@ export const Library: React.FC<LibraryProps> = ({ onClose, onSelectItem, showFee
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  key={item.id}
+                  key={`item-${item.id}-${i}`}
                   onClick={() => handleItemClick(item)}
                   className="group w-full max-w-4xl mx-auto flex items-center p-8 bg-surface border-2 border-border rounded-[2rem] hover:border-accent hover:shadow-[8px_8px_0_0_rgba(255,107,107,0.1)] transition-all text-left"
                 >

@@ -39,7 +39,7 @@ async function startServer() {
                 name: `Understandable Vector Engraving: ${concept.toUpperCase()}`,
                 description: "Digital generation & secure distribution of precise SVG cut path logic calculated by the Understandable Engine for a Glowforge.",
               },
-              unit_amount: 4900,
+              unit_amount: 5999,
             },
             quantity: 1,
           },

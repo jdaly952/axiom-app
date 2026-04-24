@@ -17,12 +17,17 @@ const generateUUID = () => {
 
 const getOrCreateSessionId = () => {
   if (typeof window !== "undefined") {
-    let sid = localStorage.getItem("understandable_session_id");
-    if (!sid) {
-      sid = generateUUID();
-      localStorage.setItem("understandable_session_id", sid);
+    try {
+      let sid = window.localStorage.getItem("understandable_session_id");
+      if (!sid) {
+        sid = generateUUID();
+        window.localStorage.setItem("understandable_session_id", sid);
+      }
+      return sid;
+    } catch (e) {
+      console.warn("localStorage unavailable, using ephemeral session ID.");
+      return generateUUID();
     }
-    return sid;
   }
   return "server-session";
 };
@@ -536,8 +541,8 @@ const AhaSparkle = ({ active, status, concept }: { active: boolean, status: "lin
           className="bg-bg border-8 border-current p-10 md:p-16 rounded-[4rem] shadow-[40px_40px_0_0_rgba(0,0,0,0.1)] flex flex-col items-center gap-8 text-center z-[101] max-w-xl mx-4"
         >
           <div className="relative">
-            <div className="w-24 h-24 md:w-32 md:h-32 bg-accent rounded-full flex items-center justify-center text-bg shadow-[0_0_50px_rgba(74,103,65,0.6)] animate-pulse">
-              {status === 'new_discovery' ? <Rocket size={48} /> : <Sparkles size={48} />}
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-accent rounded-full flex items-center justify-center text-bg shadow-[0_0_50px_rgba(74,103,65,0.6)] animate-pulse">
+              {status === 'new_discovery' ? <Rocket size={32} /> : <Sparkles size={32} />}
             </div>
             <motion.div 
               animate={{ rotate: 360 }}
@@ -1102,14 +1107,14 @@ function UnderstandableEngine() {
     });
     
     // Filter out things the user already has
-    const userConcepts = new Set(savedUnderstandables.map(s => s.concept.toLowerCase().trim()));
+    const userConcepts = new Set(savedUnderstandables.map(s => (s.concept || "").toLowerCase().trim()));
     
     const selected: any[] = [];
     const count = 4;
     
     // Pick from vault first if available AND NOT SAVED
     const availableVault = [...vaultSuggestions]
-        .filter(v => !userConcepts.has(v.concept.toLowerCase().trim()))
+        .filter(v => !userConcepts.has((v.concept || "").toLowerCase().trim()))
         .sort(() => Math.random() - 0.5);
     
     for (let i = 0; i < 2 && availableVault.length > 0; i++) {
@@ -1120,7 +1125,7 @@ function UnderstandableEngine() {
     // Fill remaining with random from combined AND NOT SAVED
     const remainingCount = count - selected.length;
     const pool = combined.filter(c => 
-        !selected.find(s => s.concept.toLowerCase().trim() === c.toLowerCase().trim()) && 
+        !selected.find(s => (s.concept || "").toLowerCase().trim() === c.toLowerCase().trim()) && 
         !userConcepts.has(c.toLowerCase().trim())
     );
     
@@ -1178,7 +1183,7 @@ function UnderstandableEngine() {
             {tags.length > 0 && (
               <div className="hidden lg:flex gap-2">
                 {tags.slice(0, 2).map((tag: string, tagIdx: number) => (
-                  <span key={`${tag}-${tagIdx}`} className="font-mono text-[8px] uppercase tracking-widest border border-current/20 px-2 py-0.5 rounded-full opacity-60">
+                  <span key={`tag-${tag}-${tagIdx}`} className="font-mono text-[8px] uppercase tracking-widest border border-current/20 px-2 py-0.5 rounded-full opacity-60">
                     #{tag}
                   </span>
                 ))}
@@ -1248,7 +1253,7 @@ function UnderstandableEngine() {
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6">
             {tags.slice(0, 3).map((tag: string, tagIdx: number) => (
-              <span key={`${tag}-${tagIdx}`} className="font-mono text-[8px] uppercase tracking-widest border border-current/10 px-2 py-0.5 rounded-full opacity-40 group-hover:opacity-100 group-hover:border-accent/40 transition-all">
+              <span key={`group-tag-${tag}-${tagIdx}`} className="font-mono text-[8px] uppercase tracking-widest border border-current/10 px-2 py-0.5 rounded-full opacity-40 group-hover:opacity-100 group-hover:border-accent/40 transition-all">
                 #{tag}
               </span>
             ))}
@@ -1284,7 +1289,7 @@ function UnderstandableEngine() {
   // Handle Share functionality
   const handleShare = (e: React.MouseEvent, ax: any) => {
     e.stopPropagation();
-    const slug = ax.id || ax.concept.toLowerCase().trim().replace(/[^a-z0-9]/gi, '_');
+    const slug = ax.id || (ax.concept || "").toLowerCase().trim().replace(/[^a-z0-9]/gi, '_');
     const shareUrl = `${window.location.origin}${window.location.pathname}?concept=${slug}`;
     
     navigator.clipboard.writeText(shareUrl).then(() => {
@@ -1713,7 +1718,7 @@ function UnderstandableEngine() {
              transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
              className="absolute top-1/4 right-1/4"
           >
-            <Cloud size={120} strokeWidth={1} />
+            <Cloud size={64} strokeWidth={1} />
           </motion.div>
         </div>
 
@@ -1732,7 +1737,7 @@ function UnderstandableEngine() {
               transition={{ duration: 2, repeat: Infinity }}
               className="text-accent"
             >
-              <Telescope size={64} strokeWidth={1.5} />
+              <Telescope size={48} strokeWidth={1.5} />
             </motion.div>
             <motion.div
               animate={{ 
@@ -1742,7 +1747,7 @@ function UnderstandableEngine() {
               transition={{ duration: 2.5, repeat: Infinity, delay: 0.2 }}
               className="text-red-400"
             >
-              <Ghost size={80} strokeWidth={1.5} />
+              <Ghost size={56} strokeWidth={1.5} />
             </motion.div>
             <motion.div
               animate={{ 
@@ -1752,7 +1757,7 @@ function UnderstandableEngine() {
               transition={{ duration: 1.8, repeat: Infinity, delay: 0.4 }}
               className="text-blue-400"
             >
-              <CircleDashed size={56} strokeWidth={1.5} className="animate-spin-slow" />
+              <CircleDashed size={40} strokeWidth={1.5} className="animate-spin-slow" />
             </motion.div>
           </div>
 
@@ -1888,8 +1893,8 @@ function UnderstandableEngine() {
 
                   {onboardingStep === 0 && (
                     <div className="flex flex-col gap-6 md:gap-10">
-                      <div className="w-16 h-16 md:w-24 md:h-24 bg-yellow-100 rounded-[1rem] md:rounded-[2rem] flex items-center justify-center text-yellow-600 shadow-inner">
-                        <Lightbulb size={32} className="md:w-[56px] md:h-[56px]" strokeWidth={2.5} />
+                      <div className="w-12 h-12 md:w-16 md:h-16 bg-yellow-100 rounded-xl md:rounded-2xl flex items-center justify-center text-yellow-600 shadow-inner">
+                        <Lightbulb size={24} className="md:w-8 md:h-8" strokeWidth={2.5} />
                       </div>
                       <h2 className="font-display text-4xl md:text-7xl font-black leading-tight">
                         Ask about <span className="text-accent underline decoration-[6px] md:decoration-[12px] underline-offset-[4px] md:underline-offset-[8px] decoration-accent/20">anything!</span>
@@ -1902,8 +1907,8 @@ function UnderstandableEngine() {
 
                   {onboardingStep === 1 && (
                     <div className="flex flex-col gap-6 md:gap-10">
-                      <div className="w-16 h-16 md:w-24 md:h-24 bg-sky-100 rounded-[1rem] md:rounded-[2rem] flex items-center justify-center text-sky-600 shadow-inner">
-                        <Smile size={32} className="md:w-[56px] md:h-[56px]" strokeWidth={2.5} />
+                      <div className="w-12 h-12 md:w-16 md:h-16 bg-sky-100 rounded-xl md:rounded-2xl flex items-center justify-center text-sky-600 shadow-inner">
+                        <Smile size={24} className="md:w-8 md:h-8" strokeWidth={2.5} />
                       </div>
                       <h2 className="font-display text-4xl md:text-7xl font-black leading-tight">
                         It grows <span className="text-accent underline decoration-[6px] md:decoration-[12px] underline-offset-[4px] md:underline-offset-[8px] decoration-accent/20">with you!</span>
@@ -1916,8 +1921,8 @@ function UnderstandableEngine() {
 
                   {onboardingStep === 2 && (
                     <div className="flex flex-col gap-6 md:gap-10">
-                      <div className="w-16 h-16 md:w-24 md:h-24 bg-rose-100 rounded-[1rem] md:rounded-[2rem] flex items-center justify-center text-rose-600 shadow-inner">
-                        <Heart size={32} className="md:w-[56px] md:h-[56px]" strokeWidth={2.5} />
+                      <div className="w-12 h-12 md:w-16 md:h-16 bg-rose-100 rounded-xl md:rounded-2xl flex items-center justify-center text-rose-600 shadow-inner">
+                        <Heart size={24} className="md:w-8 md:h-8" strokeWidth={2.5} />
                       </div>
                       <h2 className="font-display text-4xl md:text-7xl font-black leading-tight">
                          High-fives for <span className="text-accent underline decoration-[6px] md:decoration-[12px] underline-offset-[4px] md:underline-offset-[8px] decoration-accent/20">Aha's!</span>
@@ -1930,8 +1935,8 @@ function UnderstandableEngine() {
 
                   {onboardingStep === 3 && (
                     <div className="flex flex-col gap-6 md:gap-10">
-                      <div className="w-16 h-16 md:w-24 md:h-24 bg-indigo-100 rounded-[1rem] md:rounded-[2rem] flex items-center justify-center text-indigo-600 shadow-inner">
-                        <Sparkles size={32} className="md:w-[56px] md:h-[56px]" strokeWidth={2.5} />
+                      <div className="w-12 h-12 md:w-16 md:h-16 bg-indigo-100 rounded-xl md:rounded-2xl flex items-center justify-center text-indigo-600 shadow-inner">
+                        <Sparkles size={24} className="md:w-8 md:h-8" strokeWidth={2.5} />
                       </div>
                       <h2 className="font-display text-4xl md:text-7xl font-black leading-tight">
                          Building your <span className="text-accent underline decoration-[6px] md:decoration-[12px] underline-offset-[4px] md:underline-offset-[8px] decoration-accent/20">world!</span>
@@ -2278,7 +2283,7 @@ function UnderstandableEngine() {
 
                         return (
                           <button
-                            key={`concept-sug-item-${i}-${s.concept.replace(/\s+/g, '_')}-${s.isVault ? 'v' : 'r'}`}
+                            key={`concept-sug-item-${i}-${s.concept?.replace(/\s+/g, '_')}-${s.isVault ? 'v' : 'r'}`}
                             onClick={() => understandTopic(s.concept)}
                             className={`text-left p-6 border-2 transition-all group/sug aspect-square flex flex-col justify-between shadow-[6px_6px_0_0_rgba(0,0,0,0.1)] hover:shadow-[10px_10px_0_0_rgba(0,0,0,0.15)] hover:translate-y-[-2px]
                               ${colorClass} ${rotationClass} font-sans text-[10px] md:text-sm uppercase font-black tracking-widest overflow-hidden
@@ -2339,7 +2344,7 @@ function UnderstandableEngine() {
                 animate="animate"
                 exit="exit"
                 ref={resultRef} 
-                className="w-full flex-1 flex flex-col p-4 md:p-12 lg:px-24 lg:py-24 transition-all duration-1000 bg-bg h-[calc(100vh-80px)] md:h-auto overflow-hidden md:overflow-y-auto"
+                className="w-full flex-1 flex flex-col p-4 md:p-12 lg:px-24 lg:py-24 bg-bg overflow-hidden md:overflow-y-auto"
               >
                 <div className="flex-1 flex flex-col h-full">
                   <motion.div
@@ -2348,17 +2353,7 @@ function UnderstandableEngine() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -60 }}
                     transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                    className="w-full max-w-6xl mx-auto flex flex-col h-full"
-                    drag="x"
-                    dragConstraints={{ left: 0, right: 0 }}
-                    dragElastic={0.2}
-                    onDragEnd={(_, info) => {
-                      if (info.offset.x > 100 && axiomStep > 0) {
-                        setViewStep(axiomStep - 1);
-                      } else if (info.offset.x < -100 && axiomStep < 5) {
-                        setViewStep(axiomStep + 1);
-                      }
-                    }}
+                    className="w-full max-w-6xl mx-auto flex flex-col h-full relative"
                   >
                 <div className="shrink-0 mb-6 md:mb-8 flex justify-between items-center">
                   <button 
@@ -2398,7 +2393,7 @@ function UnderstandableEngine() {
                         initial="initial"
                         animate="animate"
                         exit="exit"
-                        className="space-y-6 md:space-y-12 w-full h-full flex flex-col justify-center overflow-y-auto no-scrollbar py-4"
+                        className="space-y-6 md:space-y-12 w-full h-full flex flex-col justify-start md:justify-center overflow-y-auto no-scrollbar py-8 px-1"
                       >
                          <SectionLabel>The Anchor</SectionLabel>
                          <h2 className="text-4xl md:text-8xl font-display font-black uppercase tracking-tight leading-none text-ink">{concept}</h2>
@@ -2418,7 +2413,7 @@ function UnderstandableEngine() {
                         initial="initial"
                         animate="animate"
                         exit="exit"
-                        className="space-y-6 md:space-y-12 w-full h-full flex flex-col justify-center overflow-y-auto no-scrollbar py-4"
+                        className="space-y-6 md:space-y-12 w-full h-full flex flex-col justify-start md:justify-center overflow-y-auto no-scrollbar py-8 px-1"
                       >
                         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 md:gap-6">
                           <StateStamp label={result.axis1?.labelA || "The Abundance"} type="success" />
@@ -2439,7 +2434,7 @@ function UnderstandableEngine() {
                         initial="initial"
                         animate="animate"
                         exit="exit"
-                        className="space-y-6 md:space-y-12 w-full h-full flex flex-col justify-center overflow-y-auto no-scrollbar py-4"
+                        className="space-y-6 md:space-y-12 w-full h-full flex flex-col justify-start md:justify-center overflow-y-auto no-scrollbar py-8 px-1"
                       >
                         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 md:gap-6">
                           <StateStamp label={result.axis1?.labelB || "The Scarcity"} type="struggle" />
@@ -2460,7 +2455,7 @@ function UnderstandableEngine() {
                         initial="initial"
                         animate="animate"
                         exit="exit"
-                        className="p-6 md:p-12 lg:p-20 border-2 md:border-4 border-accent/20 bg-accent/5 rounded-[2rem] md:rounded-[3rem] space-y-6 md:space-y-12 w-full h-full flex flex-col justify-center overflow-y-auto no-scrollbar py-4"
+                        className="p-6 md:p-12 lg:p-20 border-2 md:border-4 border-accent/20 bg-accent/5 rounded-[2rem] md:rounded-[3rem] space-y-6 md:space-y-12 w-full h-full flex flex-col justify-start md:justify-center overflow-y-auto no-scrollbar py-8"
                       >
                         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 md:gap-6">
                           <SectionLabel>The Hidden Mechanism</SectionLabel>
@@ -2481,7 +2476,7 @@ function UnderstandableEngine() {
                         initial="initial"
                         animate="animate"
                         exit="exit"
-                        className="space-y-6 md:space-y-12 w-full h-full flex flex-col justify-center overflow-y-auto no-scrollbar py-4"
+                        className="space-y-6 md:space-y-12 w-full h-full flex flex-col justify-start md:justify-center overflow-y-auto no-scrollbar py-8 px-1"
                       >
                         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 md:gap-6">
                           <SectionLabel>The Zenith</SectionLabel>
@@ -2502,7 +2497,7 @@ function UnderstandableEngine() {
                         initial="initial"
                         animate="animate"
                         exit="exit"
-                        className="text-center space-y-8 md:space-y-12 py-6 md:py-20 w-full h-full flex flex-col justify-center overflow-y-auto no-scrollbar"
+                        className="text-center space-y-8 md:space-y-12 py-6 md:py-20 w-full h-full flex flex-col justify-start md:justify-center overflow-y-auto no-scrollbar px-1"
                       >
                         <div className="h-1.5 w-16 md:w-24 bg-accent mx-auto rounded-full" />
                         <h3 className="text-3xl md:text-7xl font-display font-black uppercase text-ink tracking-tighter">Clarity Gained?</h3>
@@ -2651,13 +2646,34 @@ function UnderstandableEngine() {
                          className="w-full bg-current/5 border-2 border-current/10 rounded-2xl py-5 pl-16 pr-6 font-mono text-sm uppercase tracking-widest font-black outline-none focus:border-accent transition-colors text-ink" 
                        />
                      </div>
+                     <div className="flex bg-current/5 border-2 border-current/10 rounded-2xl p-2 w-full md:w-auto shrink-0">
+                        <button 
+                          onClick={() => setIndexType("personal")} 
+                          className={`flex-1 md:w-40 py-3 font-mono text-sm uppercase tracking-widest font-black transition-all rounded-xl ${indexType === "personal" ? "bg-bg shadow-sm text-ink" : "text-ink/40 hover:text-ink/80"}`}
+                        >Personal</button>
+                        <button 
+                          onClick={() => setIndexType("global")} 
+                          className={`flex-1 md:w-40 py-3 font-mono text-sm uppercase tracking-widest font-black transition-all rounded-xl ${indexType === "global" ? "bg-bg shadow-sm text-ink" : "text-ink/40 hover:text-ink/80"}`}
+                        >Global</button>
+                     </div>
                    </div>
                 </div>
                 <div className="flex flex-col border border-current/10 rounded-3xl overflow-hidden mb-32 bg-surface shadow-[0_30px_60px_-15px_rgba(0,0,0,0.05)]">
-                  {savedUnderstandables.filter(ax => ax.concept.toLowerCase().includes(indexSearch.toLowerCase())).map((ax, i) => renderConceptCard(ax, i, "vault", "row"))}
-                  {savedUnderstandables.filter(ax => ax.concept.toLowerCase().includes(indexSearch.toLowerCase())).length === 0 && (
-                     <div className="p-20 text-center font-mono opacity-40 uppercase tracking-widest text-sm">No concepts found in Vault.</div>
-                  )}
+                   {indexType === "personal" ? (
+                     <>
+                       {savedUnderstandables.filter(ax => (ax.concept || "").toLowerCase().includes(indexSearch.toLowerCase())).map((ax, i) => renderConceptCard(ax, i, "vault", "row"))}
+                       {savedUnderstandables.filter(ax => (ax.concept || "").toLowerCase().includes(indexSearch.toLowerCase())).length === 0 && (
+                          <div className="p-20 text-center font-mono opacity-40 uppercase tracking-widest text-sm">No concepts found in Vault.</div>
+                       )}
+                     </>
+                   ) : (
+                     <>
+                       {globalLogs.filter(ax => (ax.concept || "").toLowerCase().includes(indexSearch.toLowerCase())).map((ax, i) => renderConceptCard(ax, i, "global", "row"))}
+                       {globalLogs.filter(ax => (ax.concept || "").toLowerCase().includes(indexSearch.toLowerCase())).length === 0 && (
+                          <div className="p-20 text-center font-mono opacity-40 uppercase tracking-widest text-sm">No global concepts found.</div>
+                       )}
+                     </>
+                   )}
                 </div>
               </div>
             </motion.section>
@@ -2835,7 +2851,7 @@ function UnderstandableEngine() {
                             return dateB - dateA;
                         }).slice(0, 5).map((ax, i) => (
                           <button
-                            key={`discovery-recent-${i}`}
+                            key={`discovery-recent-${i}-${ax.id || ax.concept.replace(/\s+/g, '_')}`}
                             onClick={() => {
                               setResult(ax.payload || ax);
                               setConcept(ax.concept);
@@ -2948,9 +2964,9 @@ function UnderstandableEngine() {
             <Library 
               onClose={() => setShowLibrary(false)}
               onSelectItem={(item, card) => {
-                setSelectedItem(item);
-                setSelectedCard(card);
                 setShowLibrary(false);
+                setConcept(item.title);
+                understandTopic(item.title);
               }}
               showFeedback={() => setShowFeedback(true)}
             />
