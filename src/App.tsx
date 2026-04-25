@@ -50,7 +50,7 @@ import {
   increment,
   limit
 } from "firebase/firestore";
-import { Shield, Save, CheckCircle2, AlertCircle, AlertTriangle, LogIn, ChevronLeft, Trash2, Download, ArrowRight, RotateCcw, Mail, Volume2, VolumeX, Loader2, Sparkles, Rocket, Heart, Smile, Lightbulb, Cloud, Telescope, Ghost, CircleDashed, Search, Globe } from "lucide-react";
+import { Shield, Save, CheckCircle2, AlertCircle, AlertTriangle, LogIn, ChevronLeft, Trash2, Download, ArrowRight, RotateCcw, Mail, Volume2, VolumeX, Loader2, Sparkles, Rocket, Heart, Smile, Lightbulb, Cloud, Telescope, Ghost, CircleDashed, Search, Globe, RefreshCw } from "lucide-react";
 import { GoogleGenAI, Modality } from "@google/genai";
 import { SYSTEM_PROMPT } from "./prompt";
 
@@ -170,7 +170,7 @@ const CURIOUS_CONCEPTS = [
   "Why do we have fingerprints?", "How does a microwave cook food?", "What is the greenhouse effect?", "How do mirrors work?", "Why do we yawn?", "How does music affect our brain?"
 ];
 
-const MAX_CONCEPT_LENGTH = 500;
+const MAX_CONCEPT_LENGTH = 108;
 // Removed dynamic BUTTON_LABELS for static "Understand it!"
 
 const theme = "studio";
@@ -787,10 +787,29 @@ function UnderstandableEngine() {
   // --- Coaster State ---
   const [isCustomizing, setIsCustomizing] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [learningStyleIndex, setLearningStyleIndex] = useState(0);
+
+  const LEARNING_STYLES = ["analogy", "scientific", "visceral/emotional", "narrative"];
+  const currentStyle = LEARNING_STYLES[learningStyleIndex];
+
+  const StyleTag = ({ style }: { style: string }) => (
+    <div className="inline-block px-2 py-1 rounded bg-accent/10 border border-accent/20 text-accent font-mono text-[9px] uppercase tracking-widest font-bold">
+      {style}
+    </div>
+  );
 
   // --- Account/Index State ---
   const [showIndex, setShowIndex] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
+  const [bannerBgClass, setBannerBgClass] = useState("bg-accent/5");
+  const [bannerTextClass, setBannerTextClass] = useState("text-accent");
+
+  useEffect(() => {
+    if (!concept) {
+        setBannerBgClass("bg-accent/5");
+        setBannerTextClass("text-accent");
+    }
+  }, [concept]);
   const [indexType, setIndexType] = useState<"personal" | "global">("personal");
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [savedUnderstandables, setSavedUnderstandables] = useState<any[]>([]);
@@ -1014,7 +1033,9 @@ function UnderstandableEngine() {
           isManuallySaved: true,
           category: category,
           userDisplayName: user.displayName,
-          createdAt: serverTimestamp()
+          createdAt: serverTimestamp(),
+          bannerBgClass: bannerBgClass,
+          bannerTextClass: bannerTextClass
         }),
         setDoc(globalRef, {
           concept: concept,
@@ -1059,6 +1080,16 @@ function UnderstandableEngine() {
     const activeTopic = overrideTopic || concept;
     if (!activeTopic.trim()) return;
     
+    // Cycle style
+    let newIndex = learningStyleIndex;
+    if (overrideTopic) {
+        newIndex = 0; // New concept, reset
+    } else {
+        newIndex = (learningStyleIndex + 1) % LEARNING_STYLES.length;
+    }
+    setLearningStyleIndex(newIndex);
+    const selectedStyle = LEARNING_STYLES[newIndex];
+    
     setIsCommunityShared(false);
     setSaveSuccess(false);
     if (overrideTopic) {
@@ -1090,7 +1121,7 @@ function UnderstandableEngine() {
       
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Generate a 3-6-9 Triangulation for the concept: ${activeTopic}`,
+        contents: `Generate a 3-6-9 Triangulation for the concept: ${activeTopic}. Use a ${selectedStyle} learning style for the explanation.`,
         config: {
           responseMimeType: "application/json",
           systemInstruction: SYSTEM_PROMPT
@@ -1515,50 +1546,45 @@ function UnderstandableEngine() {
                           onClick={(e) => e.stopPropagation()}
                           className="absolute right-0 md:right-0 top-16 md:top-20 w-[calc(100vw-32px)] sm:w-80 md:w-96 z-50 p-6 md:p-8 border-2 border-border shadow-[16px_16px_0_0_rgba(0,0,0,0.03)] bg-surface text-ink rounded-3xl overflow-y-auto max-h-[80vh] custom-scrollbar"
                         >
-                   <div className="flex flex-col gap-10">
-                          <div className="flex flex-col gap-6 border-b-2 border-border pb-12">
-                            <span className="font-mono text-xs uppercase tracking-[0.3em] font-black opacity-80">Your Account</span>
-                            <div className="flex flex-col">
-                              <span className="text-3xl font-display font-black uppercase tracking-[0.1em]">{user.displayName}</span>
-                              <span className="text-sm font-mono opacity-80 break-all mt-2">{user.email}</span>
+                   <div className="flex flex-col gap-8">
+                          <div className="flex flex-col gap-4 border-b-2 border-border pb-8">
+                            <span className="font-mono text-xs uppercase tracking-[0.3em] font-black opacity-60">My Account</span>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xl font-display font-bold uppercase">{user.displayName}</span>
+                              <span className="text-xs font-mono opacity-60">{user.email}</span>
                             </div>
+                            <button className="text-xs font-mono underline opacity-60 hover:text-accent w-fit mt-1">Preferences</button>
                           </div>
 
-                          <div className="flex flex-col gap-10">
+                          <div className="flex flex-col gap-6">
+                            <span className="font-mono text-xs uppercase tracking-[0.3em] font-black opacity-60">Learning History</span>
                             <button 
                               onClick={() => { setShowAccount(false); setShowIndex(true); setIndexType('personal'); }}
-                              className="w-full text-left font-mono text-lg uppercase tracking-[0.4em] font-black hover:text-accent transition-all flex items-center justify-between group py-4"
+                              className="w-full text-left font-mono text-sm uppercase tracking-[0.2em] font-bold hover:text-accent transition-all flex items-center justify-between group"
                             >
-                              My Learning History
-                              <span className="opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                              My Vault
                             </button>
                             <button 
                               onClick={() => { setShowAccount(false); setShowIndex(true); setIndexType('global'); }}
-                              className="w-full text-left font-mono text-lg uppercase tracking-[0.4em] font-black hover:text-accent transition-all flex items-center justify-between group py-4"
+                              className="w-full text-left font-mono text-sm uppercase tracking-[0.2em] font-bold hover:text-accent transition-all flex items-center justify-between group"
                             >
-                              Browse All Topics
-                              <span className="opacity-0 group-hover:opacity-100 transition-opacity">→</span>
-                            </button>
-                            <button 
-                              onClick={() => { setShowAccount(false); setShowOnboarding(true); setOnboardingStep(0); }}
-                              className="w-full text-left font-mono text-lg uppercase tracking-[0.4em] font-black hover:text-accent transition-all flex items-center justify-between group py-4"
-                            >
-                              App Guide
-                              <span className="opacity-0 group-hover:opacity-100 transition-opacity">→</span>
-                            </button>
-                            <button 
-                              onClick={() => { setShowAccount(false); setIsCustomizing(true); }}
-                              className="w-full text-left font-mono text-lg uppercase tracking-[0.4em] font-black hover:text-accent transition-all flex items-center justify-between group py-4"
-                            >
-                              Saved Concepts
-                              <span className="opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                              Index Library
                             </button>
                           </div>
 
-                          <div className="pt-12 border-t-2 border-border flex justify-end items-center">
+                          <div className="flex flex-col gap-6 border-t-2 border-border pt-8">
+                            <button 
+                              onClick={() => { setShowAccount(false); setShowCommunity(true); }}
+                              className="font-mono text-sm uppercase tracking-[0.2em] font-black hover:text-accent transition-all text-left"
+                            >
+                              Community
+                            </button>
+                          </div>
+
+                          <div className="pt-8 border-t-2 border-border flex justify-end items-center">
                             <button 
                               onClick={() => signOut(auth)}
-                              className="font-mono text-sm uppercase tracking-[0.4em] font-black opacity-80 hover:opacity-100 hover:text-accent transition-all py-4"
+                              className="font-mono text-xs uppercase tracking-[0.3em] font-black opacity-60 hover:opacity-100 hover:text-accent transition-all"
                             >
                               Sign Out
                             </button>
@@ -1692,7 +1718,12 @@ function UnderstandableEngine() {
                     return (
                       <button
                         key={s.concept}
-                        onClick={() => understandTopic(s.concept)}
+                        onClick={() => {
+                            const parts = colorClass.split(' ');
+                            setBannerBgClass(parts[0]);
+                            setBannerTextClass(parts[1]);                
+                            understandTopic(s.concept);
+                          }}
                         className={`text-left p-6 border-2 transition-all group/sug min-h-[100px] flex flex-col justify-between shadow-[6px_6px_0_0_rgba(0,0,0,0.1)] hover:shadow-[10px_10px_0_0_rgba(0,0,0,0.15)] hover:translate-y-[-2px]
                           ${colorClass} ${rotationClass} font-sans text-[10px] md:text-xs uppercase font-black tracking-widest
                         `}
@@ -1816,7 +1847,7 @@ function UnderstandableEngine() {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
                       {(indexType === "personal" 
-                        ? Array.from(new Map(savedUnderstandables.map(item => [item.concept, item])).values())
+                        ? Array.from(new Map(savedUnderstandables.map(item => [item.concept, item])).values()).sort((a,b) => (a.bannerBgClass || '').localeCompare(b.bannerBgClass || ''))
                         : globalLogs
                       ).map((ax, i) => (
                         <button
@@ -1825,14 +1856,16 @@ function UnderstandableEngine() {
                             setResult(ax.payload || ax);
                             setConcept(ax.concept);
                             setShowIndex(false);
+                            setBannerBgClass(ax.bannerBgClass || "bg-accent/5");                
+                            setBannerTextClass(ax.bannerTextClass || "text-accent");
                           }}
-                          className="group flex flex-col items-start justify-between p-6 transition-all hover:bg-accent/5 rounded-lg border-2 border-current/10 hover:border-accent text-left gap-4"
+                          className={`group flex flex-col items-start justify-between p-6 transition-all rounded-lg border-2 text-left gap-4 ${ax.bannerBgClass || 'bg-surface'} ${ax.bannerTextClass || 'text-ink'} hover:opacity-80`}
                         >
                           <div className="flex flex-col gap-2 w-full">
                              <div className="flex items-center gap-3">
                                <span className="font-mono text-xs opacity-60 uppercase tracking-widest font-black shrink-0">{(i+1).toString().padStart(2, '0')}</span>
                                <span className={`text-lg font-black uppercase tracking-[0.1em] break-words line-clamp-2`}>{ax.concept}</span>
-                               <span className="ml-auto font-mono text-[10px] bg-accent/10 text-accent px-2 py-1 rounded">{(ax.domain || ax.payload?.domain || "General").toUpperCase()}</span>
+                               <span className={`ml-auto font-mono text-[10px] px-2 py-1 rounded ${ax.bannerBgClass || 'bg-accent/10'} ${ax.bannerTextClass || 'text-accent'}`}>{(ax.domain || ax.payload?.domain || "General").toUpperCase()}</span>
                              </div>
                              <p className="text-sm opacity-80 font-sans leading-relaxed line-clamp-2 pl-9">"{(ax.payload?.zenith || ax.zenith)}"</p>
                           </div>
@@ -1867,13 +1900,10 @@ function UnderstandableEngine() {
                 transition={{ duration: 0.8 }}
                 className="w-full max-w-6xl mx-auto flex flex-col"
               >
-                <div className="flex justify-start mb-8">
-                  <button 
-                    onClick={() => { setConcept(""); setResult(null); setCurrentSlide(0); }}
-                    className="font-mono text-[10px] uppercase tracking-widest font-black text-ink/40 hover:text-accent transition-all flex items-center gap-2"
-                  >
-                    ← Exploration Home
-                  </button>
+                <div className={`w-full py-6 px-8 mb-8 rounded-2xl shadow-sm border ${bannerBgClass} ${bannerTextClass.replace('text-accent', 'text-ink/60')}`}>
+                   <h1 className="text-xl md:text-3xl font-display font-black uppercase tracking-tight">
+                     {concept}
+                   </h1>
                 </div>
 
                 <AnimatePresence mode="wait">
@@ -1893,19 +1923,19 @@ function UnderstandableEngine() {
                          <p className="font-sans font-bold text-2xl md:text-5xl text-accent leading-tight">
                             "{result.hook}"
                          </p>
-                         <h2 className="text-4xl md:text-8xl font-display font-black uppercase tracking-tight leading-none text-ink">{concept}</h2>
                         </div>
                       </div>
                   )}
 
                   {currentSlide === 1 && (
                      <div className="space-y-6">
-                        <SectionLabel className="!text-3xl md:!text-5xl text-center flex justify-center !font-display !font-black uppercase tracking-tighter">THE ABUNDANCE FRAME</SectionLabel>
-                        <div className="flex justify-center pt-2">
-                           <UnderstandableVoice text={result.axis1?.stateA || result.stateA} />
+                        <div className="flex justify-center mb-2">
+                           <StyleTag style={currentStyle} />
                         </div>
-                        <p className="text-xl md:text-5xl font-sans leading-relaxed font-bold text-ink text-center text-pretty pt-4">
-                         {result.axis1?.stateA || result.stateA}
+                        <SectionLabel className="!text-3xl md:!text-5xl text-center flex justify-center !font-display !font-black uppercase tracking-tighter">THE ABUNDANCE FRAME</SectionLabel>
+                        <p className="text-xl md:text-5xl font-sans leading-relaxed font-bold text-ink text-center text-pretty pt-4 flex items-center justify-center gap-4">
+                          {result.axis1?.stateA || result.stateA}
+                          <UnderstandableVoice text={result.axis1?.stateA || result.stateA} />
                         </p>
                         <div className="flex justify-center mt-6">
                           <ELI9Card content={result.axis1?.stateA_eli9} />
@@ -1924,12 +1954,13 @@ function UnderstandableEngine() {
 
                   {currentSlide === 2 && (
                     <div className="space-y-6">
-                        <SectionLabel className="!text-3xl md:!text-5xl text-center flex justify-center !font-display !font-black uppercase tracking-tighter">THE SCARCITY FRAME</SectionLabel>
-                        <div className="flex justify-center pt-2">
-                          <UnderstandableVoice text={result.axis1?.stateB || result.stateB} />
+                        <div className="flex justify-center mb-2">
+                           <StyleTag style={currentStyle} />
                         </div>
-                        <p className="text-xl md:text-5xl font-sans leading-relaxed font-bold text-ink text-center text-pretty pt-4">
-                          {result.axis1?.stateB || result.stateB}
+                        <SectionLabel className="!text-3xl md:!text-5xl text-center flex justify-center !font-display !font-black uppercase tracking-tighter">THE SCARCITY FRAME</SectionLabel>
+                        <p className="text-xl md:text-5xl font-sans leading-relaxed font-bold text-ink text-center text-pretty pt-4 flex items-center justify-center gap-4">
+                           {result.axis1?.stateB || result.stateB}
+                           <UnderstandableVoice text={result.axis1?.stateB || result.stateB} />
                         </p>
                         <div className="flex justify-center mt-6">
                           <ELI9Card content={result.axis1?.stateB_eli9} />
@@ -1948,6 +1979,9 @@ function UnderstandableEngine() {
 
                   {currentSlide === 3 && (
                       <div className="space-y-10">
+                        <div className="flex justify-center mb-2">
+                           <StyleTag style={currentStyle} />
+                        </div>
                         <SectionLabel>THE HEARTLAND MECHANISM</SectionLabel>
                         <div className="flex justify-center pt-2">
                           <UnderstandableVoice text={result.axis2.mechanism} />
@@ -1970,6 +2004,9 @@ function UnderstandableEngine() {
 
                   {currentSlide === 4 && (
                       <div className="space-y-10">
+                          <div className="flex justify-center mb-2">
+                             <StyleTag style={currentStyle} />
+                          </div>
                           <SectionLabel>THE BIG REALIZATION</SectionLabel>
                           <div className="flex justify-center pt-2">
                              <UnderstandableVoice text={result.axis3?.zenith || result.zenith} />
@@ -2116,25 +2153,28 @@ function UnderstandableEngine() {
                       </button>
                     </motion.div>
                   ) : loading ? (
-                    <>
-                      <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center mb-6 border border-accent/20">
-                        <div className="w-4 h-4 rounded-full border-2 border-accent animate-ping" />
+                    <div className="flex flex-col items-center justify-center p-12 text-center">
+                      <div className="relative mb-8">
+                        <div className="text-6xl animate-bounce">👻</div>
+                        <div className="absolute -top-4 -right-4 w-6 h-6 bg-accent rounded-full animate-pulse" />
                       </div>
-                      <div className="flex gap-4 mb-4 font-mono text-xs uppercase tracking-widest font-black">
-                        <span className="animate-pulse text-accent uppercase tracking-[0.2em]">Thinking about your topic</span>
-                        <div className="flex gap-1 items-center">
-                          <span className="animate-bounce">.</span>
-                          <span className="animate-bounce [animation-delay:0.2s]">.</span>
-                          <span className="animate-bounce [animation-delay:0.4s]">.</span>
-                        </div>
+                      
+                      <h2 className="font-display text-2xl font-black uppercase tracking-tight text-ink mb-2">Just a sec...</h2>
+                      <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink/60 mb-8 max-w-[200px]">
+                        Orchestrating with the council of understanding
+                      </p>
+
+                      <div className="flex gap-2">
+                        <div className="w-2 h-2 rounded-full bg-accent animate-bounce" />
+                        <div className="w-2 h-2 rounded-full bg-accent animate-bounce [animation-delay:0.2s]" />
+                        <div className="w-2 h-2 rounded-full bg-accent animate-bounce [animation-delay:0.4s]" />
                       </div>
-                      <span className="font-mono text-xs text-ink font-black uppercase tracking-[0.5em]">Building your explanation</span>
-                    </>
+                    </div>
                   ) : (
                     <>
                       <div className={`mx-auto transition-all duration-1000 w-24 h-1 bg-current mb-16`} />
                       <p className="font-serif italic text-2xl md:text-3xl lg:text-4xl leading-tight transition-all px-12 text-ink">
-                        "What you are, basically, deep, deep down, far, far in, is simply the fabric and structure of existence itself." — Alan Watts
+                        "A story is the shortest distance between a human being and the truth." — Anthony De Mello
                       </p>
                     </>
                   )}
@@ -2159,25 +2199,6 @@ function UnderstandableEngine() {
         </section>
       </main>
 
-      {/* MOBILE BOTTOM NAV */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-bg border-t border-border z-50 flex justify-around p-4">
-        <button onClick={() => { setConcept(""); setResult(null); setShowIndex(false); setShowCommunity(false); setShowAccount(false); }} className="flex flex-col items-center gap-1 text-ink">
-          <Sparkles className="w-6 h-6" />
-          <span className="text-[10px] uppercase font-black">Home</span>
-        </button>
-        <button onClick={() => { setShowCommunity(true); setShowIndex(false); setShowAccount(false); }} className="flex flex-col items-center gap-1 text-emerald-600">
-          <Globe className="w-6 h-6" />
-          <span className="text-[10px] uppercase font-black">Board</span>
-        </button>
-        <button onClick={() => { setShowIndex(true); setShowCommunity(false); setShowAccount(false); }} className="flex flex-col items-center gap-1 text-ink">
-          <Save className="w-6 h-6" />
-          <span className="text-[10px] uppercase font-black">Saved</span>
-        </button>
-        <button onClick={() => setShowAccount(!showAccount)} className="flex flex-col items-center gap-1 text-ink">
-          <Smile className="w-6 h-6" />
-          <span className="text-[10px] uppercase font-black">Profile</span>
-        </button>
-      </nav>
 
       {/* FOOTER */}
         <footer className="px-16 py-12 flex justify-between items-center shrink-0 z-20 transition-all font-mono text-sm uppercase tracking-[0.4em] font-black bg-bg border-t border-border text-ink">

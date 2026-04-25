@@ -43,6 +43,8 @@ OUTPUT FORMAT
 
 Respond ONLY with a JSON object. No conversational filler. 
 IMPORTANT: Ensure the JSON is strictly valid. NO TRAILING COMMAS.
+CRITICAL: Ensure every nested object and array is correctly closed with ] or }.
+Every object MUST be correctly scoped and closed.
 
 {
   "hook": "A friendly, surprising sentence that starts the story.",
