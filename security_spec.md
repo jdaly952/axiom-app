@@ -1,79 +1,24 @@
-# Security Specification - Understandable.io
+# Security Specification: Understandable.io (v2)
 
 ## 1. Data Invariants
-- **User Profiles**: Only the owner can read or write their own profile.
-- **Saved Topics**: Must belong to a user. Only the owner can list, read, or delete.
-- **Synthesis Logs**: Public history of generations. Immutable once created. Access is public but can be restricted by a "visibility" flag.
-- **Global Index**: Publicly readable. Updated by the system during synthesis to track popularity.
-- **Community Votes**: Publicly readable. Anyone can create/update (increment/decrement).
+- An Explanation cannot exist without a valid concept.
+- Feedback must link to a valid User ID and Explanation ID.
+- UserSession must link to a valid User ID.
+- Access to PII (None currently, but if added) must be restricted to owner.
 
-## 2. The "Dirty Dozen" Payloads
+## 2. The Dirty Dozen (Payloads)
+1. **User Spoofing:** Creating a user document with someone else's `userId`.
+2. **Field Injection (User):** Creating a user with `isAdmin: true` (if applicable).
+3. **Ghost Field (User):** Updating user profile with `role: 'admin'`.
+4. **Invalid Concept ID (Explanation):** Creating/Updating with a 2KB string for `conceptId`.
+5. **State Shortcut (Feedback):** Updating a feedback record that has already been submitted.
+6. **Orphaned Feedback:** Creating feedback for a non-existent Explanation ID.
+7. **Identity Theft (Feedback):** Creating feedback where `userId` != `request.auth.uid`.
+8. **Resource Exhaustion:** Updating an array (e.g., tags) with 10,000 items.
+9. **Timestamp Manipulation (Create):** Creating document with `createdAt: 10 years ago`.
+10. **Timestamp Manipulation (Update):** Updating `createdAt`.
+11. **Refinement Spoofing:** Submitting a refinement with `voteCount: 99999`.
+12. **Query Bypass (List):** attempting a `list` query that fetches documents not owned by the user.
 
-### Identity Spoofing
-1. **Target**: `saved_topics` 
-   **Payload**: `{"uid": "someone_else_id", "concept": "Stealing Data", ...}`
-   **Action**: Create
-   **Expectation**: PERMISSION_DENIED (UID must match auth)
-
-2. **Target**: `users/target_id`
-   **Payload**: `{"displayName": "Hacker", ...}`
-   **Action**: Update
-   **Expectation**: PERMISSION_DENIED (Must be owner)
-
-### State Shortcutting / Ghost Fields
-3. **Target**: `saved_topics`
-   **Payload**: `{"concept": "Math", "isVerified": true, "uid": "my_id", ...}`
-   **Action**: Create
-   **Expectation**: PERMISSION_DENIED (isVerified is not in schema)
-
-4. **Target**: `saved_topics`
-   **Payload**: `{"uid": "my_id", ...}` (Missing required fields like `payload`)
-   **Action**: Create
-   **Expectation**: PERMISSION_DENIED (Schema mismatch)
-
-### Resource Poisoning (Denial of Wallet)
-5. **Target**: `saved_topics`
-   **Payload**: `{"concept": "A" * 1000000, ...}`
-   **Action**: Create
-   **Expectation**: PERMISSION_DENIED (Size limits)
-
-6. **Target**: `saved_topics`
-   **Payload**: `{"concept": "Valid", "payload": {"data": "junk" * 1000}, ...}`
-   **Action**: Create
-   **Expectation**: PERMISSION_DENIED (Deep size limits on map)
-
-### Relational / Orphan writes
-7. **Target**: `saved_topics`
-   **Payload**: `{"uid": "my_id", "concept": "test", "payload": {}, "createdAt": "2020-01-01"}`
-   **Action**: Create
-   **Expectation**: PERMISSION_DENIED (createdAt must be request.time)
-
-### Query Scraping
-8. **Target**: `saved_topics`
-   **Query**: `getDocs(collection("saved_topics"))` (Blanket query)
-   **Action**: List
-   **Expectation**: PERMISSION_DENIED (Rule must enforce uid boundary)
-
-9. **Target**: `synthesis_logs`
-   **Query**: `getDocs(collection("synthesis_logs"))`
-   **Action**: List
-   **Expectation**: ALLOW (Public index)
-
-### PII Leaks
-10. **Target**: `users/somebody`
-    **Action**: Get
-    **Expectation**: PERMISSION_DENIED (Email/PII isolation)
-
-### Terminal State Access
-11. **Target**: `saved_topics/{id}`
-    **Payload**: `{"concept": "Changed it"}`
-    **Action**: Update
-    **Expectation**: PERMISSION_DENIED (Topics should be immutable or strictly owner-only with invariant checks)
-
-### ID Poisoning
-12. **Target**: `saved_topics/../../some_system_path`
-    **Action**: Get
-    **Expectation**: PERMISSION_DENIED (isValidId enforcement)
-
-## 3. Test Runner (Conceptual)
-All tests verify that the above malicious payloads result in PERMISSION_DENIED.
+## 3. Test Cases (firestore.rules.test.ts)
+... (To be implemented using Firebase Emulator SDK syntax) ...

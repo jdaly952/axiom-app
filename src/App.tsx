@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect, Component } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { auth, db, handleFirestoreError, OperationType, testFirebaseConnection, firebaseConfig } from "./firebase";
 import CoasterCustomizer from "./components/CoasterCustomizer";
+import { Tooltip } from "./components/Tooltip";
+import { ShareButton } from "./components/ShareButton";
 
 const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -48,7 +50,7 @@ import {
   increment,
   limit
 } from "firebase/firestore";
-import { Shield, Save, CheckCircle2, AlertCircle, AlertTriangle, LogIn, ChevronLeft, Trash2, Download, ArrowRight, RotateCcw, Mail, Volume2, VolumeX, Loader2, Sparkles, Rocket, Heart, Smile, Lightbulb, Cloud, Telescope, Ghost, CircleDashed } from "lucide-react";
+import { Shield, Save, CheckCircle2, AlertCircle, AlertTriangle, LogIn, ChevronLeft, Trash2, Download, ArrowRight, RotateCcw, Mail, Volume2, VolumeX, Loader2, Sparkles, Rocket, Heart, Smile, Lightbulb, Cloud, Telescope, Ghost, CircleDashed, Search } from "lucide-react";
 import { GoogleGenAI, Modality } from "@google/genai";
 import { SYSTEM_PROMPT } from "./prompt";
 
@@ -228,7 +230,7 @@ const hashContent = (str: string) => {
 };
 
 // --- Vote UI Component ---
-const VoteUI = ({ content }: { content: string }) => {
+const VoteUI = ({ content, onRegenerate }: { content: string; onRegenerate?: () => void }) => {
   const theme = "studio";
   const [voted, setVoted] = useState(false);
   const [counts, setCounts] = useState<{ ups: number; downs: number } | null>(null);
@@ -255,6 +257,9 @@ const VoteUI = ({ content }: { content: string }) => {
         updatedAt: serverTimestamp()
       }, { merge: true });
       setVoted(true);
+      if (!isUp && onRegenerate) {
+        onRegenerate();
+      }
     } catch (err) {
       console.error("Voting failed", err);
     }
@@ -293,6 +298,54 @@ const VoteUI = ({ content }: { content: string }) => {
           <span className="font-mono text-[10px] md:text-xs uppercase tracking-widest font-black hidden sm:inline">Not quite</span>
         </button>
       </div>
+    </div>
+  );
+};
+
+// --- Feedback UI Component ---
+const FeedbackUI = ({ content }: { content: string }) => {
+  const [rating, setRating] = useState<number | null>(null);
+  const [comment, setComment] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const contentHash = hashContent(content);
+
+  const handleSubmit = async () => {
+    if (!rating) return;
+    try {
+      await addDoc(collection(db, "feedback"), {
+        uid: auth.currentUser?.uid,
+        contentHash,
+        rating,
+        comment,
+        createdAt: serverTimestamp()
+      });
+      setSubmitted(true);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, "feedback");
+    }
+  };
+
+  if (submitted) return <div className="mt-4 font-mono text-[10px] text-accent">Thanks for your feedback!</div>;
+
+  return (
+    <div className="mt-8 p-4 border border-border rounded-lg bg-surface">
+      <h3 className="font-mono text-xs uppercase mb-2">How understandable was this?</h3>
+      <div className="flex gap-2">
+        {[1, 2, 3, 4, 5].map(r => (
+          <button key={r} onClick={() => setRating(r)} className={`p-2 rounded ${rating === r ? 'bg-accent text-white' : 'bg-surface border'}`}>
+            {r}
+          </button>
+        ))}
+      </div>
+      <textarea 
+        className="w-full mt-2 p-2 bg-bg border rounded"
+        placeholder="Any brief comments?"
+        value={comment}
+        onChange={e => setComment(e.target.value)}
+      />
+      <Tooltip text="Click to submit your rating">
+        <button onClick={handleSubmit} className="mt-2 text-xs font-mono bg-accent text-white p-2 rounded">Submit Feedback</button>
+      </Tooltip>
     </div>
   );
 };
@@ -476,12 +529,18 @@ const ELI9Card = ({ content }: { content?: string }) => {
 const UnderstandableLogo = ({ className }: { className?: string }) => (
   <div className={`flex items-center gap-2 md:gap-4 ${className}`}>
     <div className="relative w-8 h-8 md:w-10 md:h-10 flex-shrink-0">
-      {/* Understandable.io Logo: A stylized 'U' and 'i' representing clarity and individual learning */}
-      <svg viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="w-full h-full text-ink">
-        <rect x="25" y="20" width="10" height="50" rx="2" />
-        <rect x="65" y="20" width="10" height="50" rx="2" />
-        <path d="M25 65 Q25 80 45 80 Q65 80 65 65" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" />
-        <circle cx="50" cy="40" r="6" />
+      {/* Understandable.io Logo: A U inside a 3D isometric cube with intersecting center lines */}
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="w-full h-full text-accent">
+        {/* Isometric Cube edges */}
+        <path d="M50 10 L90 30 L90 70 L50 90 L10 70 L10 30 Z" fill="none" stroke="currentColor" strokeWidth="2" />
+        <path d="M50 10 L50 90" fill="none" stroke="currentColor" strokeWidth="2" />
+        <path d="M10 30 L50 50 L90 30" fill="none" stroke="currentColor" strokeWidth="2" />
+        <path d="M10 70 L50 50" fill="none" stroke="currentColor" strokeWidth="2" />
+        <path d="M90 70 L50 50" fill="none" stroke="currentColor" strokeWidth="2" />
+        
+        {/* U shape in the center */}
+        <path d="M40 40 L40 55 Q40 65 50 65 Q60 65 60 55 L60 40" 
+              stroke="currentColor" strokeWidth="6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     </div>
     <span className="font-display text-xl md:text-3xl font-black uppercase tracking-[0.2em] text-ink">Understandable.io</span>
@@ -724,6 +783,7 @@ function UnderstandableEngine() {
   
   // --- Coaster State ---
   const [isCustomizing, setIsCustomizing] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   // --- Account/Index State ---
   const [showIndex, setShowIndex] = useState(false);
@@ -731,6 +791,7 @@ function UnderstandableEngine() {
   const [indexType, setIndexType] = useState<"personal" | "global">("personal");
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [savedUnderstandables, setSavedUnderstandables] = useState<any[]>([]);
+  const [category, setCategory] = useState<string>("General");
   const [globalLogs, setGlobalLogs] = useState<any[]>([]);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -918,6 +979,7 @@ function UnderstandableEngine() {
           concept: concept,
           payload: result,
           isManuallySaved: true,
+          category: category,
           createdAt: serverTimestamp()
         }),
         setDoc(globalRef, {
@@ -1345,12 +1407,14 @@ function UnderstandableEngine() {
 
           <div className="flex items-center gap-6">
             {result && (
-              <button 
-                onClick={() => { setConcept(""); setResult(null); setShowIndex(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                className="md:hidden flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest font-black text-accent bg-accent/5 px-4 py-2 rounded-full border border-accent/20"
-              >
-                <Search size={14} /> New Search
-              </button>
+              <Tooltip text="Start a new search">
+                <button 
+                  onClick={() => { setConcept(""); setResult(null); setShowIndex(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  className="md:hidden flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest font-black text-accent bg-accent/5 px-4 py-2 rounded-full border border-accent/20"
+                >
+                  <Search size={14} /> New Search
+                </button>
+              </Tooltip>
             )}
             {authReady && (
               user ? (
@@ -1620,8 +1684,11 @@ function UnderstandableEngine() {
                   {loadingIndex ? (
                     <div className="h-full flex items-center justify-center font-mono text-2xl uppercase tracking-[0.4em] animate-pulse font-black italic">Retrieving Encrypted Index...</div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-8 pb-20">
-                      {(indexType === "personal" ? savedUnderstandables : globalLogs).map((ax, i) => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
+                      {(indexType === "personal" 
+                        ? Array.from(new Map(savedUnderstandables.map(item => [item.concept, item])).values())
+                        : globalLogs
+                      ).map((ax, i) => (
                         <button
                           key={ax.id || i}
                           onClick={() => {
@@ -1629,21 +1696,23 @@ function UnderstandableEngine() {
                             setConcept(ax.concept);
                             setShowIndex(false);
                           }}
-                          className="group flex flex-col md:flex-row items-start md:items-center justify-between py-12 px-8 md:py-16 md:px-20 transition-all hover:bg-black hover:text-white border-4 border-current/10 hover:border-black text-left gap-8"
+                          className="group flex flex-col items-start justify-between p-6 transition-all hover:bg-accent/5 rounded-lg border-2 border-current/10 hover:border-accent text-left gap-4"
                         >
-                          <div className="flex flex-col gap-4 md:gap-6 w-full md:w-auto">
-                             <div className="flex items-center gap-6 md:gap-10">
-                               <span className="font-mono text-sm md:text-lg opacity-60 uppercase tracking-widest font-black shrink-0">{(i+1).toString().padStart(2, '0')}</span>
-                               <span className={`text-xl md:text-2xl font-black uppercase tracking-[0.1em] md:tracking-[0.2em] break-words line-clamp-2`}>{ax.concept}</span>
+                          <div className="flex flex-col gap-2 w-full">
+                             <div className="flex items-center gap-3">
+                               <span className="font-mono text-xs opacity-60 uppercase tracking-widest font-black shrink-0">{(i+1).toString().padStart(2, '0')}</span>
+                               <span className={`text-lg font-black uppercase tracking-[0.1em] break-words line-clamp-2`}>{ax.concept}</span>
+                               <span className="ml-auto font-mono text-[10px] bg-accent/10 text-accent px-2 py-1 rounded">{(ax.domain || ax.payload?.domain || "General").toUpperCase()}</span>
                              </div>
-                             <p className="text-sm md:text-xl opacity-80 font-sans leading-relaxed line-clamp-1 pl-12 md:pl-20">"{(ax.payload?.zenith || ax.zenith)}"</p>
+                             <p className="text-sm opacity-80 font-sans leading-relaxed line-clamp-2 pl-9">"{(ax.payload?.zenith || ax.zenith)}"</p>
                           </div>
-                          <div className="flex flex-col items-end gap-3 mt-4 md:mt-0 shrink-0">
-                            <span className="font-mono text-xs md:text-sm uppercase tracking-[0.2em] md:tracking-[0.3em] font-black italic opacity-80 group-hover:opacity-100 transition-opacity">{ax.domain || (ax.payload?.domain)}</span>
-                          </div>
+                      
                         </button>
                       ))}
-                      {(indexType === "personal" ? savedUnderstandables : globalLogs).length === 0 && (
+                      {(indexType === "personal" 
+                        ? Array.from(new Map(savedUnderstandables.map(item => [item.concept, item])).values()) 
+                        : globalLogs
+                      ).length === 0 && (
                         <div className="py-40 text-center font-sans text-4xl opacity-70 leading-normal">No traces found in current sector.<br/>Awaiting synthesis.</div>
                       )}
                       
@@ -1677,207 +1746,156 @@ function UnderstandableEngine() {
                   </button>
                 </div>
 
-                {/* 1: THE HOOK (The Provocation) */}
-                {result.hook && (
-                   <div className="mb-12 md:mb-20 pb-12 md:pb-16 border-b-4 border-current/20 flex flex-col gap-6">
-                     <div className="flex justify-start">
-                        <UnderstandableVoice text={result.hook} />
-                     </div>
-                     <p className="font-sans font-bold text-2xl md:text-5xl text-accent leading-tight text-pretty">
-                        {result.hook}
-                     </p>
-                   </div>
+                {/* Back Button - Top Left */}
+                {currentSlide > 0 && currentSlide < 5 && (
+                  <button 
+                    onClick={() => setCurrentSlide(Math.max(0, currentSlide - 1))}
+                    className="absolute top-4 left-6 px-4 py-2 bg-surface border border-border rounded-lg text-ink/60 hover:text-accent transition-all font-mono uppercase tracking-widest text-xs shadow-sm"
+                  >
+                    ← Back
+                  </button>
                 )}
 
-                {/* The Core Idea */}
-                <div className="mb-16 md:mb-32 flex items-center gap-16">
-                  <div className="flex flex-col">
-                    <SectionLabel className="mb-6 md:mb-12">The Main Idea</SectionLabel>
-                    <h2 className="text-4xl md:text-9xl font-display font-black uppercase tracking-tight leading-none text-ink">{concept}</h2>
-                  </div>
-                  <div className="flex-1 h-1 md:h-2 bg-current opacity-10 ml-8 md:ml-16 rounded-full" />
-                </div>
-
-                {/* What It Feels Like */}
-                <div className="flex flex-col mb-32 md:mb-56">
-                   <SectionLabel className="mb-12 md:mb-20">The Human Story</SectionLabel>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 lg:gap-40 relative">
-                    {/* Vertical Divider line between states */}
-                    <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-1 md:w-2 bg-current opacity-10 -translate-x-1/2" />
-
-                    <div className="space-y-8 md:space-y-16">
-                      <div className="flex items-center justify-between gap-6">
-                        <StateStamp 
-                          label={result.axis1?.labelA || "Before you look..."} 
-                          type="success" 
-                        />
-                        <div className="flex flex-1 items-center gap-6">
-                          <div className="h-1 flex-1 bg-current opacity-10" />
-                          <UnderstandableVoice text={result.axis1?.stateA || result.stateA} />
+                <AnimatePresence mode="wait">
+                  <motion.div 
+                    key={currentSlide}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                  {currentSlide === 0 && (
+                      <div className="flex flex-col gap-16">
+                        {/* THE HOOK */}
+                        <div className="space-y-8">
+                         <div className="flex justify-start">
+                            <UnderstandableVoice text={result.hook} />
+                         </div>
+                         <p className="font-sans font-bold text-3xl md:text-6xl text-accent leading-tight text-pretty">
+                            "{result.hook}"
+                         </p>
+                         <SectionLabel>The Main Idea</SectionLabel>
+                         <h2 className="text-4xl md:text-9xl font-display font-black uppercase tracking-tight leading-none text-ink">{concept}</h2>
                         </div>
                       </div>
-                        <p className="text-xl md:text-4xl font-sans leading-[1.6] text-pretty font-bold transition-all text-ink">
-                          {result.axis1?.stateA || result.stateA}
-                        </p>
-                      <div className="flex flex-col gap-4">
-                        <ELI9Card content={result.axis1?.stateA_eli9} />
-                        <VoteUI content={result.axis1?.stateA || result.stateA} />
-                      </div>
-                    </div>
+                  )}
 
-                    <div className="space-y-8 md:space-y-16">
-                      <div className="flex items-center justify-between gap-6">
-                        <StateStamp 
-                          label={result.axis1?.labelB || "Once you look..."} 
-                          type="struggle" 
-                        />
-                        <div className="flex flex-1 items-center gap-6">
-                          <div className="h-1 flex-1 bg-current opacity-10" />
-                          <UnderstandableVoice text={result.axis1?.stateB || result.stateB} />
-                        </div>
-                      </div>
-                        <p className="text-xl md:text-4xl font-sans leading-[1.6] text-pretty font-bold transition-all text-ink">
-                          {result.axis1?.stateB || result.stateB}
-                        </p>
-          <div className="flex flex-col gap-4">
-            <ELI9Card content={result.axis1?.stateB_eli9} />
-            <VoteUI content={result.axis1?.stateB || result.stateB} />
-          </div>
-                    </div>
-                  </div>
-                </div>
-
-                 {/* The Secret Way It Works */}
-                 {result.axis2?.mechanism && (
-                    <div className="mb-40 md:mb-64 p-12 md:p-24 border-2 border-accent/20 bg-accent/5 relative overflow-hidden group rounded-[2.5rem] shadow-[20px_20px_0_0_rgba(74,103,65,0.03)]">
-                       <div className="flex justify-between items-center mb-16">
-                         <SectionLabel>The Hidden Mechanism</SectionLabel>
-                         <UnderstandableVoice text={result.axis2.mechanism} />
-                       </div>
-                       <p className="text-3xl md:text-7xl font-display font-bold leading-[1.1] tracking-tight text-ink">
-                          {result.axis2.mechanism}
+                  {currentSlide === 1 && (
+                     <div className="space-y-16">
+                       <SectionLabel>The Abundance Frame</SectionLabel>
+                       <StateStamp label={result.axis1?.labelA || "When it works"} type="success" />
+                       <p className="text-2xl md:text-5xl font-sans leading-[1.4] font-bold text-ink transition-all">
+                        {result.axis1?.stateA || result.stateA}
                        </p>
+                       <div className="flex flex-col gap-4">
+                        <ELI9Card content={result.axis1?.stateA_eli9} />
+                        <VoteUI content={result.axis1?.stateA || result.stateA} onRegenerate={() => understandTopic()} />
+                       </div>
+                     </div>
+                  )}
+
+                  {currentSlide === 2 && (
+                    <div className="space-y-16">
+                      <SectionLabel>The Scarcity Frame</SectionLabel>
+                      <StateStamp label={result.axis1?.labelB || "When it's missing"} type="struggle" />
+                      <p className="text-2xl md:text-5xl font-sans leading-[1.4] font-bold text-ink transition-all">
+                        {result.axis1?.stateB || result.stateB}
+                      </p>
                       <div className="flex flex-col gap-4">
-                        <ELI9Card content={result.axis2.mechanism_eli9} />
-                        <VoteUI content={result.axis2.mechanism} />
+                        <ELI9Card content={result.axis1?.stateB_eli9} />
+                        <VoteUI content={result.axis1?.stateB || result.stateB} onRegenerate={() => understandTopic()} />
                       </div>
-                   </div>
-                )}
-
-                 {/* The Big Picture */}
-                 <div className="relative pt-24 md:pt-48 border-t-4 md:border-t-8 border-current/10 pb-24 md:pb-40">
-                    <div className="absolute top-8 md:top-16 left-0 right-0 flex justify-between items-center">
-                      <SectionLabel>The Big Realization</SectionLabel>
-                      <UnderstandableVoice text={result.axis3?.zenith || result.zenith} />
                     </div>
+                  )}
 
-                   <div className="flex flex-col gap-12 md:gap-20 mb-24 md:mb-48">
-                      <div className="space-y-8">
-                        <p className="leading-[1.2] transition-all break-words whitespace-pre-wrap text-3xl md:text-7xl lg:text-8xl font-display font-black text-ink tracking-tighter">
-                          "{result.axis3?.zenith || result.zenith}"
+                  {currentSlide === 3 && (
+                    <div className="space-y-16">
+                        <SectionLabel>The Hidden Mechanism</SectionLabel>
+                        <p className="text-2xl md:text-5xl font-display font-bold leading-[1.1] tracking-tight text-ink">
+                           {result.axis2.mechanism}
                         </p>
                         <div className="flex flex-col gap-4">
-                          <ELI9Card content={result.axis3?.zenith_eli9} />
-                          <VoteUI content={result.axis3?.zenith || result.zenith} />
+                          <ELI9Card content={result.axis2.mechanism_eli9} />
+                          <VoteUI content={result.axis2.mechanism} onRegenerate={() => understandTopic()} />
                         </div>
+                    </div>
+                  )}
+
+                  {currentSlide === 4 && (
+                      <div className="space-y-16">
+                          <SectionLabel>The Big Realization</SectionLabel>
+                          <p className="text-3xl md:text-7xl lg:text-8xl font-display font-black text-ink tracking-tighter">
+                            "{result.axis3?.zenith || result.zenith}"
+                          </p>
+                          <div className="flex flex-col gap-4">
+                            <ELI9Card content={result.axis3?.zenith_eli9} />
+                            <VoteUI content={result.axis3?.zenith || result.zenith} onRegenerate={() => understandTopic()} />
+                           </div>
                       </div>
-                      
-                       {result.identityAnchor && (
-                         <div className="space-y-12">
-                           <div className="flex items-center gap-10 md:gap-20 mt-12 md:mt-24 pt-8 md:pt-16 border-t-2 border-accent/20">
-                               <div className="w-12 md:w-32 h-1 bg-accent" />
-                               <div className="flex-1 flex flex-col gap-6">
-                                 <div className="flex justify-between items-center">
-                                   <span className="font-mono text-xs md:text-sm uppercase tracking-[0.2em] opacity-40">Something to think about:</span>
-                                   <UnderstandableVoice text={result.identityAnchor} />
-                                 </div>
-                                 <p className="text-2xl md:text-5xl font-sans text-accent font-black leading-relaxed">
-                                     {result.identityAnchor}
-                                 </p>
+                  )}
+
+                  {currentSlide === 5 && (
+                    <div className="flex flex-col items-center justify-center min-h-[400px] text-center gap-12">
+                         {saveSuccess ? (
+                           <motion.div 
+                             initial={{ scale: 0.9, opacity: 0 }}
+                             animate={{ scale: 1, opacity: 1 }}
+                             className="text-accent space-y-6 p-12 bg-accent/5 rounded-3xl border-2 border-accent/20"
+                           >
+                              <div className="text-8xl">✨</div>
+                              <p className="font-display text-3xl font-black uppercase tracking-[0.1em]">Understanding Locked In!</p>
+                              <p className="font-sans text-lg opacity-70">Thank you for helping the community improve.</p>
+                              <button 
+                                onClick={() => { setConcept(""); setResult(null); setCurrentSlide(0); }}
+                                className="mt-8 font-mono text-sm uppercase tracking-[0.2em] font-bold border-b-2 border-accent hover:text-accent"
+                              >
+                                Exploration complete. Start new?
+                              </button>
+                           </motion.div>
+                         ) : (
+                           <div className="flex flex-col gap-12 w-full max-w-xl">
+                              <p className="font-display text-4xl md:text-5xl font-black text-ink">Does it click now?</p>
+                              
+                              <div className="flex flex-col gap-6 w-full">
+                               <button 
+                                 onClick={saveToLibrary}
+                                 className="w-full font-display text-2xl font-bold bg-accent text-white py-6 rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-accent/20"
+                               >
+                                 Lock it in!
+                               </button>
+                               <button 
+                                 onClick={() => { setCurrentSlide(0); }}
+                                 className="w-full font-mono text-lg uppercase tracking-[0.2em] font-bold text-ink/70 py-6 border-2 border-ink/10 rounded-2xl hover:bg-ink/5 transition-all"
+                               >
+                                 Not quite, another example
+                               </button>
                                </div>
                            </div>
-                          <div className="flex flex-col gap-4">
-                            <ELI9Card content={result.identityAnchor_eli9} />
-                            <VoteUI content={result.identityAnchor} />
-                          </div>
-                        </div>
-                      )}
-                   </div>
-
-                   {result.distillation && (
-                      <div className="flex justify-center mb-16 opacity-40">
-                         <div className="border-2 border-current px-8 py-4 font-mono text-lg md:text-xl font-black uppercase tracking-[0.3em]">
-                            {result.distillation}
-                         </div>
-                      </div>
-                   )}
-
-                   <div className="flex flex-col md:flex-row items-center justify-between gap-16 md:gap-32 bg-current/5 p-8 md:p-16 lg:p-24 border-l-[12px] md:border-l-[20px] border-accent">
-                          <Tooltip text="Clear Current Result">
-                            <button
-                              onClick={() => {
-                                setConcept("");
-                                setResult(null);
-                              }}
-                              className="font-mono text-sm md:text-3xl tracking-[0.2em] md:tracking-[0.4em] uppercase font-black border-b-4 md:border-b-8 border-current hover:text-accent hover:border-accent transition-all pb-4 md:pb-8 flex items-center gap-6 md:gap-12"
-                            >
-                              ← Try a New Topic
-                            </button>
-                          </Tooltip>
-
-                      <div className="flex flex-col sm:flex-row gap-8 md:gap-20 items-center w-full md:w-auto">
-                        <Tooltip text="View Saved Triangulations">
-                          <button 
-                            onClick={() => setShowIndex(true)}
-                            className="font-mono text-lg md:text-3xl tracking-[0.3em] md:tracking-[0.4em] uppercase font-black hover:text-accent transition-colors"
-                          >
-                            Save to My Topics
-                          </button>
-                        </Tooltip>
-                        
-                         <Tooltip text={user ? "Persist to Physical Reality" : "Sign in to Materialize"}>
-                          <button 
-                            onClick={saveToLibrary}
-                            disabled={saving || saveSuccess}
-                            className={`w-full md:w-auto font-mono text-lg md:text-3xl uppercase tracking-[0.3em] font-black px-12 md:px-24 py-6 md:py-12 transition-all border-4 md:border-8 shadow-[12px_12px_0_0_current] rounded-2xl
-                              ${saveSuccess ? "bg-accent border-accent text-bg" : "bg-ink text-bg border-ink hover:bg-bg hover:text-ink"}
-                            `}
-                          >
-                            {!user ? "SIGN IN" : saveSuccess ? "SYNCHRONIZED" : "Download Summary"}
-                          </button>
-                        </Tooltip>
-
-                        <Tooltip text="Download Raw Vector">
-                          <button 
-                            onClick={handleDownloadSVG}
-                            className={`p-6 transition-all opacity-60 hover:opacity-100 hover:text-accent`}
-                          >
-                            <Download className="w-12 h-12 md:w-16 md:h-16" strokeWidth={3} />
-                          </button>
-                        </Tooltip>
-                      </div>
+                         )}
                     </div>
+                  )}
+                  </motion.div>
+                </AnimatePresence>
 
-                    <div className="mt-32 md:mt-64 mb-48 md:mb-80 flex flex-col items-center text-center">
-                        <div className="w-16 h-1 bg-accent mb-12 opacity-30" />
-                        <h3 className="font-mono text-lg md:text-xl uppercase tracking-[0.4em] font-black opacity-60 mb-8">End of Synthesis</h3>
-                        <p className="text-xl md:text-3xl font-sans font-bold mb-16 max-w-xl mx-auto text-ink/60">
-                          You've reached the end of this triangulation. Ready to explore a new concept?
-                        </p>
-                        <button
-                          onClick={() => {
-                            setConcept("");
-                            setResult(null);
-                            resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            inputRef.current?.focus();
-                          }}
-                          className="flex items-center gap-8 px-12 py-8 font-mono text-lg md:text-xl uppercase tracking-[0.3em] font-black transition-all border-4 shadow-[12px_12px_0_0_current] hover:translate-x-[-6px] hover:translate-y-[-6px] hover:shadow-[16px_16px_0_0_current] active:translate-x-0 active:translate-y-0 active:shadow-[6px_6px_0_0_current] bg-accent border-accent text-bg rounded-2xl"
-                        >
-                          Want to explore another topic? →
-                        </button>
-                    </div>
-                </div>
+                {/* Slider Navigation - Next Button - Bottom Right */}
+                {currentSlide < 5 && (
+                  <div className="flex items-center justify-end mt-12 gap-4">
+                     {currentSlide > 0 && (
+                        <button 
+                         onClick={() => setCurrentSlide(Math.max(0, currentSlide - 1))}
+                         className="px-8 py-3 border-2 border-current/20 rounded-2xl hover:bg-current/5 transition-all font-mono uppercase tracking-widest text-sm font-bold text-current"
+                       >
+                         ← Previous
+                       </button>
+                     )}
+                     <button 
+                       onClick={() => setCurrentSlide(Math.min(5, currentSlide + 1))}
+                       className="px-12 py-4 bg-emerald-500 text-white rounded-2xl hover:bg-emerald-600 transition-all font-display uppercase tracking-widest text-lg font-bold shadow-lg shadow-emerald-500/20"
+                     >
+                       Next →
+                     </button>
+                  </div>
+                )}
               </motion.div>
             ) : (
               <motion.div
@@ -1935,7 +1953,7 @@ function UnderstandableEngine() {
                     <>
                       <div className={`mx-auto transition-all duration-1000 w-24 h-1 bg-current mb-16`} />
                       <p className="font-serif italic text-2xl md:text-3xl lg:text-4xl leading-tight transition-all px-12 text-ink">
-                        "Never stop learning"
+                        "What you are, basically, deep, deep down, far, far in, is simply the fabric and structure of existence itself." — Alan Watts
                       </p>
                     </>
                   )}
@@ -1959,6 +1977,22 @@ function UnderstandableEngine() {
           </div>
         </section>
       </main>
+
+      {/* MOBILE BOTTOM NAV */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-bg border-t border-border z-50 flex justify-around p-4">
+        <button onClick={() => { /* Navigate Home */ }} className="flex flex-col items-center gap-1 text-ink">
+          <Sparkles className="w-6 h-6" />
+          <span className="text-[10px] uppercase font-black">Home</span>
+        </button>
+        <button onClick={() => setShowIndex(true)} className="flex flex-col items-center gap-1 text-ink">
+          <Save className="w-6 h-6" />
+          <span className="text-[10px] uppercase font-black">Saved</span>
+        </button>
+        <button onClick={() => { /* Profile/Sign In */ }} className="flex flex-col items-center gap-1 text-ink">
+          <Smile className="w-6 h-6" />
+          <span className="text-[10px] uppercase font-black">Profile</span>
+        </button>
+      </nav>
 
       {/* FOOTER */}
         <footer className="px-16 py-12 flex justify-between items-center shrink-0 z-20 transition-all font-mono text-sm uppercase tracking-[0.4em] font-black bg-bg border-t border-border text-ink">

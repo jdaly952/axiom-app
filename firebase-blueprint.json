@@ -5,76 +5,125 @@
       "description": "User profile information",
       "type": "object",
       "properties": {
-        "uid": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "displayName": { "type": "string" },
-        "photoURL": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["uid", "email"]
-    },
-    "UnderstandablePayload": {
-      "title": "Understandable Payload",
-      "description": "The complete generated cognitive structure",
-      "type": "object",
-      "properties": {
-        "concept": { "type": "string" },
-        "uid": { "type": "string", "description": "Optional: User who triggered it" },
-        "payload": { 
-          "type": "object",
-          "description": "The full JSON result from Gemini"
-        },
+        "userId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "isManuallySaved": { "type": "boolean" },
-        "rank": { "type": "number", "description": "Relevance/Popularity score" }
+        "preferredStyle": { "type": "string" },
+        "styleHistory": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "searchedConcepts": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "conceptSequence": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "savedTopics": { "type": "array", "items": { "type": "string" } },
+        "sessionCount": { "type": "number" }
       },
-      "required": ["concept", "payload", "createdAt"]
+      "required": ["userId", "createdAt"]
     },
-    "GlobalTopic": {
-      "title": "Global Topic",
-      "description": "Aggregated data for a unique concept",
+    "Explanation": {
+      "title": "Explanation",
+      "description": "Generated cognitive structure",
       "type": "object",
       "properties": {
-        "concept": { "type": "string" },
-        "rank": { "type": "number" },
-        "lastPayload": { "type": "object" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "explanationId": { "type": "string" },
+        "conceptId": { "type": "string" },
+        "learningStyle": { "type": "string" },
+        "slideContent": { "type": "array", "items": { "type": "string" } },
+        "humanConfirmed": { "type": "boolean" },
+        "confirmCount": { "type": "number", "description": "⭐" },
+        "recycleCount": { "type": "number", "description": "⭐" },
+        "confidenceScore": { "type": "number", "description": "⭐" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "difficulty": { "type": "string", "description": "⭐" },
+        "prerequisites": { "type": "array", "items": { "type": "string" }, "description": "⭐" }
       },
-      "required": ["concept", "rank"]
+      "required": ["explanationId", "conceptId", "createdAt"]
     },
-    "CommunityVote": {
-      "title": "Community Vote",
-      "description": "Feedback on specific explanation blocks",
+    "UserSession": {
+      "title": "User Session",
+      "description": "User session tracking",
       "type": "object",
       "properties": {
-        "contentHash": { "type": "string", "description": "Unique ID for the specific text being voted on" },
-        "ups": { "type": "number", "description": "Thumbs up count" },
-        "downs": { "type": "number", "description": "Thumbs down count" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "sessionId": { "type": "string" },
+        "userId": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "conceptsExplored": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "conceptOrder": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "duration": { "type": "number", "description": "⭐" },
+        "device": { "type": "string" }
       },
-      "required": ["contentHash", "ups", "downs"]
+      "required": ["sessionId", "userId", "startedAt"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "User feedback on explanation",
+      "type": "object",
+      "properties": {
+        "feedbackId": { "type": "string" },
+        "userId": { "type": "string" },
+        "explanationId": { "type": "string" },
+        "result": { "type": "boolean" },
+        "learningStyle": { "type": "string", "description": "⭐" },
+        "recyclesBefore": { "type": "number", "description": "⭐" },
+        "slideReachedAt": { "type": "number", "description": "⭐" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["feedbackId", "userId", "explanationId", "timestamp"]
+    },
+    "ConceptGraph": {
+      "title": "Concept Graph",
+      "description": "Aggregated data for a concept",
+      "type": "object",
+      "properties": {
+        "conceptId": { "type": "string" },
+        "conceptName": { "type": "string" },
+        "relatedConcepts": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "searchedAfter": { "type": "object", "description": "⭐" },
+        "searchedBefore": { "type": "object", "description": "⭐" },
+        "totalSearches": { "type": "number" },
+        "avgRecycles": { "type": "number", "description": "⭐" },
+        "category": { "type": "string", "description": "⭐" },
+        "difficulty": { "type": "string", "description": "⭐" },
+        "prerequisites": { "type": "array", "items": { "type": "string" }, "description": "⭐" }
+      },
+      "required": ["conceptId", "conceptName"]
+    },
+    "Refinement": {
+      "title": "Refinement",
+      "description": "Proposed content improvements",
+      "type": "object",
+      "properties": {
+        "refinementId": { "type": "string" },
+        "explanationId": { "type": "string" },
+        "proposedBy": { "type": "string" },
+        "suggestedText": { "type": "string" },
+        "voteCount": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["refinementId", "explanationId"]
     }
   },
   "firestore": {
-    "/users/{uid}": {
+    "/users/{userId}": {
       "schema": "User",
       "description": "User profiles"
     },
-    "/global_index/{conceptId}": {
-      "schema": "GlobalTopic",
-      "description": "Global ranking system for concept auto-suggestions"
+    "/explanations/{explanationId}": {
+      "schema": "Explanation",
+      "description": "Generated explanations"
     },
-    "/saved_topics/{topicId}": {
-      "schema": "UnderstandablePayload",
-      "description": "User-curated index of topics"
+    "/sessions/{sessionId}": {
+      "schema": "UserSession",
+      "description": "User session activity"
     },
-    "/synthesis_logs/{logId}": {
-      "schema": "UnderstandablePayload",
-      "description": "Automatic history of all system transmutations for pattern learning"
+    "/feedback/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "User feedback"
     },
-    "/community_votes/{voteId}": {
-      "schema": "CommunityVote",
-      "description": "Aggregated helpfulness votes for specific explanation segments"
+    "/concepts/{conceptId}": {
+      "schema": "ConceptGraph",
+      "description": "Concept graph"
+    },
+    "/refinements/{refinementId}": {
+      "schema": "Refinement",
+      "description": "Proposed refinements"
     }
   }
 }

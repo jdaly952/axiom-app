@@ -2,111 +2,73 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // ===============================================================
-    // 0. Catch-All Deny
+    // Global Deny
     // ===============================================================
     match /{document=**} {
       allow read, write: if false;
     }
 
     // ===============================================================
-    // 1. Primitive Helpers
+    // Primitives
     // ===============================================================
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(uid) {
-      return isSignedIn() && request.auth.uid == uid;
-    }
-
-    function incoming() {
-      return request.resource.data;
-    }
-
-    function existing() {
-      return resource.data;
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
 
     // ===============================================================
-    // 2. Validation Blueprints
+    // Validation Helpers (Pillar 2)
     // ===============================================================
-    
+
     function isValidUser(data) {
-      return data.uid is string && data.uid == request.auth.uid &&
-             data.email is string && data.email.size() <= 200 &&
-             (data.get('displayName', null) == null || (data.displayName is string && data.displayName.size() <= 100)) &&
-             (data.get('photoURL', null) == null || (data.photoURL is string && data.photoURL.size() <= 500)) &&
+      return data.userId is string && data.userId == request.auth.uid &&
              data.createdAt == request.time;
     }
 
-    function isValidUnderstandable(data) {
-      return data.concept is string && data.concept.size() <= 500 &&
-             data.payload is map &&
+    function isValidExplanation(data) {
+      return data.conceptId is string && data.conceptId.size() <= 128 &&
              data.createdAt == request.time &&
-             (data.get('uid', null) == null || (data.uid is string && (data.uid.size() <= 128)));
+             data.slideContent is list && data.slideContent.size() <= 20;
     }
 
-    function isValidVote(data) {
-      return data.contentHash is string && data.contentHash.size() <= 128 &&
-             data.ups is int && data.downs is int &&
-             data.updatedAt == request.time;
-    }
-
-    function isValidGlobal(data) {
-      return data.concept is string && data.concept.size() <= 500 &&
-             data.rank is int &&
-             data.lastPayload is map &&
-             data.updatedAt == request.time;
+    function isValidFeedback(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.explanationId is string &&
+             data.result is bool &&
+             data.timestamp == request.time;
     }
 
     // ===============================================================
-    // 3. Collection Rules
+    // Collections
     // ===============================================================
 
-    match /_internal_/connection_test {
-      allow read: if true;
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['preferredStyle', 'sessionCount']);
     }
 
-    match /users/{uid} {
-      allow get: if isOwner(uid);
-      allow create: if isOwner(uid) && isValidUser(incoming());
-      allow update: if isOwner(uid) && isValidUser(incoming()) && 
-                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'email']);
-    }
-
-    match /saved_topics/{topicId} {
-      // Identity Locked Collection
-      // Handle document level get
-      allow get: if isSignedIn() && existing().get('uid', null) == request.auth.uid;
-      
-      // Handle collection queries (list)
-      // Every document in the result MUST have uid == request.auth.uid
-      allow list: if isSignedIn() && resource.data.get('uid', null) == request.auth.uid;
-      
-      allow create: if isSignedIn() && isValidUnderstandable(incoming()) && incoming().uid == request.auth.uid;
-      allow delete: if isSignedIn() && existing().get('uid', null) == request.auth.uid;
-    }
-
-    match /synthesis_logs/{logId} {
-      // History of public transmutations
+    match /explanations/{explanationId} {
       allow get: if true;
-      allow list: if true;
-      allow create: if isValidUnderstandable(incoming());
+      allow list: if true; // Public knowledge
+      allow create: if isSignedIn() && isValidExplanation(incoming());
     }
 
-    match /global_index/{conceptId} {
-      allow read: if true;
-      allow write: if true; // Democratic ranking
+    match /feedback/{feedbackId} {
+        // Pillar 8 - Secure List Queries
+        allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+        allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+        allow create: if isSignedIn() && isValidFeedback(incoming());
     }
 
-    match /community_votes/{voteId} {
-      allow read: if true;
-      allow create: if isValidVote(incoming());
-      allow update: if isValidVote(incoming());
+    match /sessions/{sessionId} {
+        allow get, create: if isOwner(incoming().userId);
+    }
+    
+    match /concepts/{conceptId} {
+        allow read: if true;
     }
   }
 }
