@@ -1,0 +1,180 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "preferredStyle": { "type": "string" },
+        "styleHistory": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "searchedConcepts": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "conceptSequence": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "savedTopics": { "type": "array", "items": { "type": "string" } },
+        "sessionCount": { "type": "number" }
+      },
+      "required": ["userId", "createdAt"]
+    },
+    "Explanation": {
+      "title": "Explanation",
+      "description": "Generated cognitive structure",
+      "type": "object",
+      "properties": {
+        "explanationId": { "type": "string" },
+        "conceptId": { "type": "string" },
+        "learningStyle": { "type": "string" },
+        "slideContent": { "type": "array", "items": { "type": "string" } },
+        "humanConfirmed": { "type": "boolean" },
+        "confirmCount": { "type": "number", "description": "⭐" },
+        "recycleCount": { "type": "number", "description": "⭐" },
+        "confidenceScore": { "type": "number", "description": "⭐" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "difficulty": { "type": "string", "description": "⭐" },
+        "prerequisites": { "type": "array", "items": { "type": "string" }, "description": "⭐" }
+      },
+      "required": ["explanationId", "conceptId", "createdAt"]
+    },
+    "UserSession": {
+      "title": "User Session",
+      "description": "User session tracking",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string" },
+        "userId": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "conceptsExplored": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "conceptOrder": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "duration": { "type": "number", "description": "⭐" },
+        "device": { "type": "string" }
+      },
+      "required": ["sessionId", "userId", "startedAt"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "User feedback on explanation",
+      "type": "object",
+      "properties": {
+        "feedbackId": { "type": "string" },
+        "userId": { "type": "string" },
+        "explanationId": { "type": "string" },
+        "result": { "type": "boolean" },
+        "learningStyle": { "type": "string", "description": "⭐" },
+        "recyclesBefore": { "type": "number", "description": "⭐" },
+        "slideReachedAt": { "type": "number", "description": "⭐" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["feedbackId", "userId", "explanationId", "timestamp"]
+    },
+    "ConceptGraph": {
+      "title": "Concept Graph",
+      "description": "Aggregated data for a concept",
+      "type": "object",
+      "properties": {
+        "conceptId": { "type": "string" },
+        "conceptName": { "type": "string" },
+        "relatedConcepts": { "type": "array", "items": { "type": "string" }, "description": "⭐" },
+        "searchedAfter": { "type": "object", "description": "⭐" },
+        "searchedBefore": { "type": "object", "description": "⭐" },
+        "totalSearches": { "type": "number" },
+        "avgRecycles": { "type": "number", "description": "⭐" },
+        "category": { "type": "string", "description": "⭐" },
+        "difficulty": { "type": "string", "description": "⭐" },
+        "prerequisites": { "type": "array", "items": { "type": "string" }, "description": "⭐" }
+      },
+      "required": ["conceptId", "conceptName"]
+    },
+    "Refinement": {
+      "title": "Refinement",
+      "description": "Proposed content improvements",
+      "type": "object",
+      "properties": {
+        "refinementId": { "type": "string" },
+        "explanationId": { "type": "string" },
+        "proposedBy": { "type": "string" },
+        "suggestedText": { "type": "string" },
+        "voteCount": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["refinementId", "explanationId"]
+    },
+    "CommunityShare": {
+      "title": "Community Share",
+      "description": "Topic shared with the community",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "concept": { "type": "string" },
+        "payload": { "type": "object" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "concept", "payload", "createdAt"]
+    },
+    "SavedTopic": {
+      "title": "Saved Topic",
+      "description": "Topic saved by a user",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "concept": { "type": "string" },
+        "result": { "type": "object" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "concept", "result", "createdAt"]
+    },
+    "SynthesisLog": {
+      "title": "Synthesis Log",
+      "description": "Log of synthesis requests",
+      "type": "object",
+      "properties": {
+        "concept": { "type": "string" },
+        "status": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["concept", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/explanations/{explanationId}": {
+      "schema": "Explanation",
+      "description": "Generated explanations"
+    },
+    "/sessions/{sessionId}": {
+      "schema": "UserSession",
+      "description": "User session activity"
+    },
+    "/feedback/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "User feedback"
+    },
+    "/concepts/{conceptId}": {
+      "schema": "ConceptGraph",
+      "description": "Concept graph"
+    },
+    "/refinements/{refinementId}": {
+      "schema": "Refinement",
+      "description": "Proposed refinements"
+    },
+    "/community_shares/{shareId}": {
+      "schema": "CommunityShare",
+      "description": "Publicly shared insights"
+    },
+    "/saved_topics/{topicId}": {
+      "schema": "SavedTopic",
+      "description": "User's personal saved topics"
+    },
+    "/synthesis_logs/{logId}": {
+      "schema": "SynthesisLog",
+      "description": "System synthesis logs"
+    }
+  }
+}
