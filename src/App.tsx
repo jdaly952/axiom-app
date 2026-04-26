@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, Component } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { GoogleGenAI } from "@google/genai";
+import { SYSTEM_PROMPT } from "./prompt";
 import { auth, db, handleFirestoreError, OperationType, testFirebaseConnection, firebaseConfig } from "./firebase";
 import { deleteDoc } from "firebase/firestore";
 import CoasterCustomizer from "./components/CoasterCustomizer";
@@ -400,14 +402,16 @@ const UnderstandableVoice = ({ text }: { text: string }) => {
 
     setLoading(true);
     try {
-      const response = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+      const ttsResponse = await ai.models.generateContent({
+        model: "gemini-2.5-flash-preview-tts",
+        contents: [{ parts: [{ text }] }],
+        config: {
+          responseModalities: ["AUDIO"],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } } },
+        },
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "TTS Generation Failed");
-      const base64Audio = data.audio;
+      const base64Audio = ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       if (base64Audio) {
         // Gemini TTS returns raw PCM (16-bit, 24kHz, Mono). We must add a WAV header for browser playback.
         const binaryString = atob(base64Audio);
@@ -1119,20 +1123,17 @@ function UnderstandableEngine() {
     }, 100);
 
     try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ concept: baseTopic, style: selectedStyle }),
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+      const prompt = `Generate a 3-6-9 Triangulation for the concept: "${baseTopic}". If the concept is complete nonsense, a non-concept, or unrecognizable, return a JSON with a "valid" field set to false and a "mechanism" field explaining that the topic needs to be clearer. If valid, return "valid": true, "hook", "analogy", and "mechanism" fields.`;
+      const geminiResponse = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: `${prompt}. Use a ${selectedStyle} learning style for the explanation.`,
+        config: {
+          responseMimeType: "application/json",
+          systemInstruction: SYSTEM_PROMPT
+        }
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate content.");
-      }
-
-      const { text } = await response.json();
+      const text = geminiResponse.text;
       
       if (!text) {
         throw new Error("No response returned from the engine.");
