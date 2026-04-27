@@ -7,6 +7,8 @@ workflows:
       app_store_connect: codemagic
     environment:
       node: 22
+      groups:
+        - ios_credentials
       vars:
         BUNDLE_ID: io.understandable.app
         XCODE_PROJECT: ios/App/App.xcodeproj
