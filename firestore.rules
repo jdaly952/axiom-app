@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Global Deny
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // Primitives
+    // ===============================================================
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // ===============================================================
+    // Validation Helpers (Pillar 2)
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.createdAt == request.time;
+    }
+
+    function isValidExplanation(data) {
+      return data.conceptId is string && data.conceptId.size() <= 128 &&
+             data.createdAt == request.time &&
+             data.slideContent is list && data.slideContent.size() <= 20;
+    }
+
+    function isValidFeedback(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.explanationId is string &&
+             data.result is bool &&
+             data.timestamp == request.time;
+    }
+
+    function isValidCommunityShare(data) {
+      return data.uid is string && data.uid == request.auth.uid &&
+             data.concept is string && data.concept.size() <= 200 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidSavedTopic(data) {
+      return data.uid is string && data.uid == request.auth.uid &&
+             data.concept is string && data.concept.size() <= 200 &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Collections
+    // ===============================================================
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['preferredStyle', 'sessionCount']);
+    }
+
+    match /explanations/{explanationId} {
+      allow get: if true;
+      allow list: if true; // Public knowledge
+      allow create: if isSignedIn() && isValidExplanation(incoming());
+    }
+
+    match /feedback/{feedbackId} {
+        // Pillar 8 - Secure List Queries
+        allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+        allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+        allow create: if isSignedIn() && isValidFeedback(incoming());
+    }
+
+    match /community_shares/{shareId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+    }
+
+    match /saved_topics/{topicId} {
+      allow list: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && isValidSavedTopic(incoming());
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    match /synthesis_logs/{logId} {
+      allow read: if true;
+      allow create: if true; 
+    }
+
+    match /sessions/{sessionId} {
+        allow get, create: if isOwner(incoming().userId);
+    }
+    
+    match /concepts/{conceptId} {
+        allow read: if true;
+    }
+
+    match /global_index/{slug} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    
+    match /community_votes/{contentHash} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

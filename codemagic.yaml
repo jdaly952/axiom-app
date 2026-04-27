@@ -1,0 +1,54 @@
+workflows:
+  ios-app-store:
+    name: iOS App Store
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: codemagic
+    environment:
+      node: 22
+      groups:
+        - default
+      vars:
+        BUNDLE_ID: io.understandable.app
+        XCODE_PROJECT: ios/App/App.xcodeproj
+        XCODE_SCHEME: App
+    scripts:
+      - name: Install dependencies
+        script: npm ci
+      - name: Build web app
+        script: |
+          echo "GEMINI_API_KEY=$GEMINI_API_KEY" > .env
+          npm run build
+      - name: Sync Capacitor iOS
+        script: npx cap sync ios
+      - name: Initialize keychain
+        script: keychain initialize
+      - name: Fetch or create signing files
+        script: |
+          export CERTIFICATE_PRIVATE_KEY=$(echo "LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tDQpNSUlFdmdJQkFEQU5CZ2txaGtpRzl3MEJBUUVGQUFTQ0JLZ3dnZ1NrQWdFQUFvSUJBUURIUUhjN3hNaWxBRldCDQovQlkwU3FEc1ZCQVJXZ3psRlVKeXVtbjdqd2xQZkgwQnpjL1NoK0pkT0VpSWNCZ2VqTWZsNURmc09sbUMxT1J2DQowVEZjL2xVZVlwOENVT1dvWUxpcTlyNjh0L2lKNmo3NG01ZjZ4MHVkRUZoOWFCWXNtbTN3MHJERStCWGpSSERnDQpyaTdkb1Y3a1R5RVFwTWQwVmg1ckFjZXRheitWNTBxbEpiV0tMelYvS0dEVGhpTm9TZkgxWmJ3anZuNWRBeWEvDQpDSW1PMlRzZlNiWU00VndKcFNqTDB6aGNCUURnZWdDOFNvai9mVkRWWXVaUVM3a2t4YmU2NGR3OTU2YVAyT1I4DQpzZ09uYTNTZW0zYktPR1lNaEM0R0M0YXNub1VvZVgwbmpUNldrNTFQaUEwaWxZU3VJYUo0d3ErUW1STHpheGk5DQpiZk9oVDlNWEFnTUJBQUVDZ2dFQVBVbEk0MnR0dzhMTWlrUzlsNnYwdjN4RHpQS0QwTnF2SzViSERvYzZkK1owDQpsTjkzTXV4MDVmTnY2L2QrazdiOXJXcDdBUUFabERKamFUbFJFNmR2Q3YrT3BTbTQyZ2VXQlpBTHJ3UnZRQXg2DQovZ0R0eUVjUXJPamdMd0thLzNFb3E5QkNhdk5iMkNHdkRvekZBWXFuSTFacmR6RVg0R0swekhrcHI5K3pHU29XDQpOU1NySjZFWThiSzY0cXZVVUFHdHFjTTh2VnEzU1hJK29DTEluWHBWdVBKY1VSREw1akZhYmd0UGdSOGw0cVhTDQo3aTJzZ1VvMVJudDhxVFNHU2FSYmRqODlNVmxrellUZGMvUWVyQmNJNFFNb05jbWNCaEF6RDMrYXJROFd3cTRKDQpTTW8wcWF6NG9oSUZ4bGF3Zi9ieW5vN2J6NStCRWNoM08yV2E1TmF4Z1FLQmdRRHFacEthZGhvTEszZjRiWlMyDQpWMGtRNWpMYjJxUFVNNTFaMlk5ejVuVU1VMWV6bzZuWmJGN2Njc1ZPUlNmcE11ZWlXTElTWU9uZXRyT0E3RkJjDQpLbURwR0t2bTlKYkFYMGo2Tnlwa05CUWhkdUY4a0FEaGhzbk5zdW4zdlVjQUNUWkVCZ2drMThsVjNXSlpMYkxDDQo4UHpzWWZOaUdtb3VkenBZWndLK2FDdU00UUtCZ1FEWm5MNkk3VVR2S1dkQUVsaEJhRE1TaTExYzR5SDR1RVpoDQpac25lMFRpdkVvM3lBcVBnZ00rNTV5US9CT3hsUUEyd0dVVDNqMGJJaTRsOFY3L3ZaempHclF3aDdsUCs5OFlBDQozZHJtUEdGeVpWSEdHSkNsZUMvMkFjUy9OZTM4N3d0bFZ6aDZTaWszeVdLOVV3a0Y0SUdkV3o0RGZoM1F1OFZaDQptVlhlWnhHbTl3S0JnQXQ4ODNwMmgxZzh6U2h6MW5JSlhSOWk2T00xbUFueWJhZlZyZDQwVVZCRlZXc01mbXFWDQprU0NrejE3Q3JPNFUvSjFNVTQzckNndE1VUWZralJ1M1NBQ2tvT2cwM0o2WkRPNldmWkZqckFqbjFxMVFNWHJjDQpMRS9Va1ByL1g5ZDBuQ0JCVzJ6UzFwOUt0bU5BaGg1ZnlVV2NsMTBiaGxDNHJ6ZGQ5UmgzNm9xQkFvR0JBTkE5DQo4Z3RnV3ZZdS9kSlBlOHRqcG5RWmo0ZURCNUJXNzJyb0RVZy9tT25ZYktOcUtWNStoY3BWeWRiUXBGT2ovelZFDQppVDRLQ3VlQXVGbVlNMkVxdXlkTWsrNm9maExoRXNiamgwV0tCSXFQTUxqTDZ5ZWRvdS9jODJVemU0SHZVMDF3DQpNT2k5clVIb1lxZmdIU05WbTFOMDdCdzFoTnlwdzRvaGRRMjJQaXN6QW9HQkFNZXZLU2JwMmJNakdRbDViTHVjDQpwRW9IWWxxRHBYZmpvMnpiSHp2YjZNd0NWM2VlR24wSzNNTjFpSjFxZXQ2ZVJlMm82L0Mzem5BdU9jVGdHS3ViDQpkbXUrUjd6R1czMzlJQURzYjV0UmRSVkZRQWlvVm1nT1VIZ2RvV2JDQzhoTDR6dkQwY2MwS1RLazQ2UTN2eUpkDQp3b1pQR1FVcFU0ckZJZHQ3Y2MwelhFWEcNCi0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0NCg==" | base64 -d)
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+      - name: Add certificates to keychain
+        script: keychain add-certificates
+      - name: Set up code signing
+        script: xcode-project use-profiles
+      - name: Increment build number
+        script: |
+          BUILD_NUM=$(date +%Y%m%d%H%M)
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUM" ios/App/App/Info.plist
+          echo "Set build number to $BUILD_NUM"
+      - name: Build iOS IPA
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
